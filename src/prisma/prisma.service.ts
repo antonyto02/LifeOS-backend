@@ -1,5 +1,12 @@
-import { INestApplication, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PrismaClient } = require('@prisma/client') as {
+  PrismaClient: PrismaClientConstructor;
+};
+
+type PrismaClientConstructor = new (...args: any[]) => PrismaClientType;
 
 @Injectable()
 export class PrismaService
@@ -12,11 +19,5 @@ export class PrismaService
 
   async onModuleDestroy() {
     await this.$disconnect();
-  }
-
-  async enableShutdownHooks(app: INestApplication) {
-    this.$on('beforeExit', async () => {
-      await app.close();
-    });
   }
 }
