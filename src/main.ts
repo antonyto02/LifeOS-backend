@@ -11,6 +11,11 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
+  app.enableCors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  });
+
   await app.listen(3000, '0.0.0.0');
 }
 bootstrap();
