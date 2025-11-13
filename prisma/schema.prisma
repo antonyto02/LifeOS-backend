@@ -23,6 +23,7 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
+  loginAttempts LoginAttempt[]
 
   @@map("users")
 }
@@ -35,4 +36,17 @@ model RevocationReason {
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("revocation_reasons")
+}
+
+model LoginAttempt {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  emailAttempted String   @map("email_attempted") @db.VarChar(255)
+  ipAddress      String   @map("ip_address") @db.VarChar(255)
+  success        Boolean
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("login_attempts")
 }
