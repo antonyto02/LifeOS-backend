@@ -63,6 +63,8 @@ export class BinanceClient {
       // Only NEW orders
       if (order.eventType === 'NEW') {
         this.tradingService.handleNewOrder(order);
+      } else if (order.eventType === 'CANCELED') {
+        this.tradingService.handleCanceledOrder(order);
       }
     });
   }
