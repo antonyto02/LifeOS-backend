@@ -4,7 +4,7 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import cors from '@fastify/cors';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -12,6 +12,10 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
+  // Adaptador WebSocket NATIVO (ws)
+  app.useWebSocketAdapter(new WsAdapter(app));
+
+  // CORS
   app.enableCors({
     origin: "http://localhost:5173",
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -20,4 +24,5 @@ async function bootstrap() {
 
   await app.listen(3000, '0.0.0.0');
 }
+
 bootstrap();

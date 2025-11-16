@@ -4,56 +4,61 @@ import { AppService } from './app.service';
 @Controller()
 export class AppController {
   private readonly pruebaData = {
-    ACAUSDT: {
+    VANRYUSDT: {
       levels: [
         {
           price: 0.0169,
           side: 'BUY',
-          marketAmount: 250000,
+          marketAmount: 270000,
           userOrders: [
-            {
-              id: 'A1B2',
-              amount: 5000,
-              position: 1,
-              min_delante: 30000,
-              max_delante: 80000,
-            },
+            
+            
           ],
         },
         {
           price: 0.0170,
           side: 'BUY',
           marketAmount: 600000,
-          userOrders: [],
+          userOrders: [
+            {
+              id: 'B2C3',
+              amount: 30000,
+              position: 1,
+              min_delante:40000,
+              max_delante: 80000,
+            },
+            {
+              id: 'B2C4',
+              amount: 50000,
+              position: 1,
+              min_delante:180000,
+              max_delante: 200000,
+            },
+          ],
         },
         {
           price: 0.0171,
           side: 'SELL',
-          marketAmount: 450000,
+          marketAmount: 1000000,
           userOrders: [
-            {
-              id: 'B2C3',
-              amount: 5200,
-              position: 1,
-              min_delante: 50000,
-              max_delante: 70000,
-            },
-            {
-              id: 'K8H2',
-              amount: 3800,
-              position: 2,
-              min_delante: 120000,
-              max_delante: 120000,
-            },
+            
+            
+            
           ],
+        },
+        {
+          price: 0.0172,
+          side: 'SELL',
+          marketAmount: 100000,
+          userOrders: [],
         },
       ],
       probabilityRow: [
-        { price: 0.0169, side: 'BUY', prob: 0.9 },
-        { price: 0.0171, side: 'BUY', prob: 0.1 },
+        { price: 0.0169, side: 'BUY', prob: 0.1 },
+        { price: 0.0171, side: 'BUY', prob: 0.9 },
 
-        { price: 0.0170, side: 'SELL', prob: 0.9 },
-        { price: 0.0172, side: 'SELL', prob: 0.1 },
+        { price: 0.0170, side: 'SELL', prob: 0.1 },
+        { price: 0.0172, side: 'SELL', prob: 0.9 },
       ],
     },
   };
