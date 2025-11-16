@@ -51,6 +51,7 @@ export class BinanceClient {
         side: data.S,
         price: data.p,
         qty: data.q,
+        cumulativeFilledQty: data.Z,
         orderType: data.o,
       };
 
@@ -60,12 +61,7 @@ export class BinanceClient {
       // LIMIT only
       if (order.orderType !== 'LIMIT') return;
 
-      // Only NEW orders
-      if (order.eventType === 'NEW') {
-        this.tradingService.handleNewOrder(order);
-      } else if (order.eventType === 'CANCELED') {
-        this.tradingService.handleCanceledOrder(order);
-      }
+      this.tradingService.handleEvent(order);
     });
   }
 }
