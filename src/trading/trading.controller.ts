@@ -9,4 +9,12 @@ export class TradingController {
   getFormattedOrders() {
     return this.tradingService.getFormattedState();
   }
+
+  @Get('debug/orders')
+  getRawOrders() {
+    return {
+      buyOrders: this.tradingService.buyOrders,
+      sellOrders: this.tradingService.sellOrders,
+    };
+  }
 }

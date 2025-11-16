@@ -67,6 +67,24 @@ export class TradingService implements OnModuleInit {
   }
 
   // ============================================================
+  //               PASO 2: CANCELACIÓN DE ORDEN
+  // ============================================================
+  async handleCanceledOrder(order: any) {
+    const targetList = order.side === 'BUY' ? this.buyOrders : this.sellOrders;
+    const index = targetList.findIndex((o) => o.id === order.orderId);
+
+    if (index === -1) {
+      console.log('⚠️ Orden a cancelar no encontrada:', order);
+      return;
+    }
+
+    const [removed] = targetList.splice(index, 1);
+    console.log('🗑️  Orden cancelada y eliminada:', removed);
+
+    await this.broadcastState();
+  }
+
+  // ============================================================
   //           PASO 5 Y 6: DEPTH + ACTUALIZACIÓN DE ORDEN
   // ============================================================
   private async processDepthForOrder(order: any) {
