@@ -17,6 +17,7 @@ export class TradingService implements OnModuleInit {
   public sellOrders: any[] = [];
 
   private stateBuilder: StateBuilder;
+  private depthByToken: Map<string, any> = new Map();
 
   constructor(
     private readonly binanceClient: BinanceClient,
@@ -34,6 +35,23 @@ export class TradingService implements OnModuleInit {
   // ============================================================
   isAllowedToken(symbol: string): boolean {
     return this.allowedTokens.has(symbol);
+  }
+
+  // ============================================================
+  //               ROUTER DE EVENTOS
+  // ============================================================
+  async handleEvent(order: any) {
+    if (order.eventType === 'NEW') {
+      return this.handleNewOrder(order);
+    }
+
+    if (order.eventType === 'CANCELED') {
+      return this.handleCanceledOrder(order);
+    }
+
+    if (order.eventType === 'TRADE') {
+      return this.handleTradeOrder(order);
+    }
   }
 
   // ============================================================
@@ -59,11 +77,13 @@ export class TradingService implements OnModuleInit {
       console.log('🔴 Nueva SELL order guardada:', newOrder);
     }
 
+    const depth = await this.fetchDepth(newOrder.token);
+
     // calcular depth, min/max, position
-    await this.processDepthForOrder(newOrder);
+    await this.processDepthForOrder(newOrder, depth);
 
     // enviar estado final al frontend
-    await this.broadcastState();
+    await this.broadcastState(depth, newOrder.token);
   }
 
   // ============================================================
@@ -81,19 +101,44 @@ export class TradingService implements OnModuleInit {
     const [removed] = targetList.splice(index, 1);
     console.log('🗑️  Orden cancelada y eliminada:', removed);
 
-    await this.broadcastState();
+    const depth = await this.fetchDepth(order.symbol);
+    await this.broadcastState(depth, order.symbol);
+  }
+
+  // ============================================================
+  //               PASO 3: TRADE DE MI ORDEN
+  // ============================================================
+  async handleTradeOrder(order: any) {
+    const targetList = order.side === 'BUY' ? this.buyOrders : this.sellOrders;
+    const targetOrder = targetList.find((o) => o.id === order.orderId);
+
+    const depth = await this.fetchDepth(order.symbol);
+
+    if (targetOrder) {
+      const executedQty = Number(order.cumulativeFilledQty ?? 0);
+      const remaining = Math.max(targetOrder.amount - executedQty, 0);
+
+      if (remaining === 0) {
+        const idx = targetList.indexOf(targetOrder);
+        targetList.splice(idx, 1);
+        console.log('✅ Orden llenada y removida:', targetOrder);
+      } else {
+        targetOrder.amount = remaining;
+        await this.processDepthForOrder(targetOrder, depth);
+        console.log('✳️ Orden parcialmente llenada:', targetOrder);
+      }
+    } else {
+      console.log('ℹ️ TRADE recibido para orden no encontrada, refrescando depth.');
+    }
+
+    await this.broadcastState(depth, order.symbol);
   }
 
   // ============================================================
   //           PASO 5 Y 6: DEPTH + ACTUALIZACIÓN DE ORDEN
   // ============================================================
-  private async processDepthForOrder(order: any) {
+  private async processDepthForOrder(order: any, depth: any) {
     try {
-      const url = `https://api.binance.com/api/v3/depth?symbol=${order.token}&limit=20`;
-
-      const response = await fetch(url);
-      const depth = await response.json();
-
       const levels = order.side === 'BUY' ? depth.bids : depth.asks;
       const level = levels.find((l: any) => Number(l[0]) === order.price);
 
@@ -127,11 +172,13 @@ export class TradingService implements OnModuleInit {
   // ============================================================
   //               BROADCAST AL FRONTEND
   // ============================================================
-  private async broadcastState() {
+  private async broadcastState(primaryDepth: any, primaryToken: string) {
     try {
+      const depthMap = await this.buildDepthMap(primaryToken, primaryDepth);
       const state = await this.stateBuilder.buildState(
         this.buyOrders,
         this.sellOrders,
+        depthMap,
       );
 
       this.gateway.broadcast(state);
@@ -142,7 +189,64 @@ export class TradingService implements OnModuleInit {
   }
 
   async getFormattedState() {
-  return this.stateBuilder.buildState(this.buyOrders, this.sellOrders);
-}
+    const tokens = this.collectTokens();
+    const depthMap = await this.fetchDepths(tokens);
+
+    return this.stateBuilder.buildState(
+      this.buyOrders,
+      this.sellOrders,
+      depthMap,
+    );
+  }
+
+  // ============================================================
+  //               DEPTH HELPERS
+  // ============================================================
+  private collectTokens() {
+    const set = new Set<string>();
+    for (const o of this.buyOrders) if (o?.token) set.add(o.token);
+    for (const o of this.sellOrders) if (o?.token) set.add(o.token);
+    return Array.from(set);
+  }
+
+  private async fetchDepth(token: string) {
+    const url = `https://api.binance.com/api/v3/depth?symbol=${token}&limit=20`;
+
+    const response = await fetch(url);
+    const depth = await response.json();
+
+    this.depthByToken.set(token, depth);
+    return depth;
+  }
+
+  private async buildDepthMap(primaryToken: string, primaryDepth: any) {
+    const tokens = this.collectTokens();
+    if (primaryToken && !tokens.includes(primaryToken)) {
+      tokens.push(primaryToken);
+    }
+
+    return this.fetchDepths(tokens, primaryToken, primaryDepth);
+  }
+
+  private async fetchDepths(
+    tokens: string[],
+    primaryToken?: string,
+    primaryDepth?: any,
+  ) {
+    const depthMap = new Map<string, any>();
+
+    for (const token of tokens) {
+      if (primaryToken && primaryDepth && token === primaryToken) {
+        depthMap.set(token, primaryDepth);
+        this.depthByToken.set(token, primaryDepth);
+        continue;
+      }
+
+      const depth = await this.fetchDepth(token);
+      depthMap.set(token, depth);
+    }
+
+    return depthMap;
+  }
 
 }

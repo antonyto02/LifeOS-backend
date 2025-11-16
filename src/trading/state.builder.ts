@@ -2,46 +2,41 @@
 
 export class StateBuilder {
 
-  private depthCache: Map<string, any> = new Map();
-
   constructor() {}
 
-  async buildState(buyOrders: any[], sellOrders: any[]) {
+  async buildState(
+    buyOrders: any[],
+    sellOrders: any[],
+    depthByToken: Map<string, any>,
+  ) {
     const finalState: any = {};
-    const tokens = this.extractTokens(buyOrders, sellOrders);
+    const tokens = this.extractTokens(buyOrders, sellOrders, depthByToken);
 
     for (const token of tokens) {
-      finalState[token] = await this.buildTokenState(token, buyOrders, sellOrders);
+      const depth = depthByToken.get(token) ?? { bids: [], asks: [] };
+      finalState[token] = this.buildTokenState(token, buyOrders, sellOrders, depth);
     }
 
     return finalState;
   }
 
-  private extractTokens(buyOrders: any[], sellOrders: any[]) {
+  private extractTokens(
+    buyOrders: any[],
+    sellOrders: any[],
+    depthByToken: Map<string, any>,
+  ) {
     const set = new Set<string>();
     for (const o of buyOrders) if (o?.token) set.add(o.token);
     for (const o of sellOrders) if (o?.token) set.add(o.token);
+    for (const token of depthByToken.keys()) set.add(token);
     return Array.from(set);
   }
 
-  private async buildTokenState(token: string, buys: any[], sells: any[]) {
-    const depth = await this.getDepth(token);
-
+  private buildTokenState(token: string, buys: any[], sells: any[], depth: any) {
     return {
       levels: this.buildSixLevels(buys, sells, depth),
       probabilityRow: this.buildProbabilityRow(depth),
     };
-  }
-
-  private async getDepth(token: string) {
-    if (this.depthCache.has(token)) return this.depthCache.get(token);
-
-    const url = `https://api.binance.com/api/v3/depth?symbol=${token}&limit=20`;
-    const res = await fetch(url);
-    const depth = await res.json();
-
-    this.depthCache.set(token, depth);
-    return depth;
   }
 
   // ============================================================
