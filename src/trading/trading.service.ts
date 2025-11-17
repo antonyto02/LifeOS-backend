@@ -19,6 +19,7 @@ export class TradingService implements OnModuleInit {
   public activeTokens: Set<string> = new Set();
 
   private stateBuilder: StateBuilder;
+  private orderBooks: Record<string, { bids: Map<number, number>; asks: Map<number, number> }> = {};
   private depthByToken: Map<string, any> = new Map();
   private depthStreams: Map<string, WebSocket> = new Map();
   private tradeStreams: Map<string, WebSocket> = new Map();
@@ -297,6 +298,20 @@ export class TradingService implements OnModuleInit {
     const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`;
     const ws = new WebSocket(url);
 
+    ws.on('message', async (message: WebSocket.Data) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        const payload = parsed?.data ?? parsed;
+        const bids = payload?.bids ?? payload?.b ?? [];
+        const asks = payload?.asks ?? payload?.a ?? [];
+        const targetSymbol = payload?.s ?? symbol;
+
+        this.handleDepthDelta(targetSymbol, bids, asks);
+      } catch (err) {
+        console.log('Error procesando mensaje de depth:', err);
+      }
+    });
+
     this.depthStreams.set(symbol, ws);
   }
 
@@ -380,6 +395,165 @@ export class TradingService implements OnModuleInit {
 
     updateLevel(depth.bids ?? []);
     updateLevel(depth.asks ?? []);
+  }
+
+  // ============================================================
+  //               DEPTH STREAM HANDLING
+  // ============================================================
+  private ensureOrderBook(symbol: string) {
+    if (!this.orderBooks[symbol]) {
+      this.orderBooks[symbol] = { bids: new Map(), asks: new Map() };
+    }
+    return this.orderBooks[symbol];
+  }
+
+  private handleDepthDelta(
+    symbol: string,
+    bidsDelta: [string, string][],
+    asksDelta: [string, string][],
+  ) {
+    const orderBook = this.ensureOrderBook(symbol);
+
+    for (const [priceStr, amountStr] of bidsDelta) {
+      const price = Number(priceStr);
+      const amount = Number(amountStr);
+
+      if (amount === 0) {
+        orderBook.bids.delete(price);
+      } else {
+        orderBook.bids.set(price, amount);
+      }
+    }
+
+    for (const [priceStr, amountStr] of asksDelta) {
+      const price = Number(priceStr);
+      const amount = Number(amountStr);
+
+      if (amount === 0) {
+        orderBook.asks.delete(price);
+      } else {
+        orderBook.asks.set(price, amount);
+      }
+    }
+
+    const sortedBids = Array.from(orderBook.bids.entries()).sort(
+      (a, b) => b[0] - a[0],
+    );
+    const sortedAsks = Array.from(orderBook.asks.entries()).sort(
+      (a, b) => a[0] - b[0],
+    );
+
+    const depthSnapshot = {
+      bids: sortedBids.map(([price, amount]) => [price, amount]),
+      asks: sortedAsks.map(([price, amount]) => [price, amount]),
+    };
+
+    this.depthByToken.set(symbol, depthSnapshot);
+
+    const levels = this.buildDepthLevels(symbol, sortedBids, sortedAsks);
+    const probabilityRow = this.buildProbabilityRow(sortedBids, sortedAsks);
+
+    const payload = {
+      [symbol]: {
+        levels,
+        probabilityRow,
+      },
+    };
+
+    this.gateway.broadcast(payload);
+  }
+
+  private buildDepthLevels(
+    symbol: string,
+    sortedBids: [number, number][],
+    sortedAsks: [number, number][],
+  ) {
+    const bidLevels = sortedBids.slice(0, 3).map(([price, amount]) => ({
+      price,
+      side: 'BUY' as const,
+      marketAmount: amount,
+      userOrders: [],
+    }));
+
+    const askLevels = sortedAsks.slice(0, 3).map(([price, amount]) => ({
+      price,
+      side: 'SELL' as const,
+      marketAmount: amount,
+      userOrders: [],
+    }));
+
+    const levels = [...bidLevels, ...askLevels];
+
+    for (const order of [...this.buyOrders, ...this.sellOrders]) {
+      if (order.token !== symbol) continue;
+
+      const targetLevel = levels.find(
+        (level) => level.side === order.side && level.price === order.price,
+      );
+
+      if (!targetLevel) continue;
+
+      const depthAmount = targetLevel.marketAmount;
+
+      if (order.max_delante === null || depthAmount < order.max_delante) {
+        order.max_delante = depthAmount;
+      }
+
+      targetLevel.userOrders.push({
+        id: order.id,
+        amount: order.amount,
+        position: order.position,
+        min_delante: order.min_delante,
+        max_delante: order.max_delante,
+      });
+    }
+
+    return levels;
+  }
+
+  private buildProbabilityRow(
+    sortedBids: [number, number][],
+    sortedAsks: [number, number][],
+  ) {
+    if (!sortedBids.length || !sortedAsks.length) return [];
+
+    const [bid0, bid1] = sortedBids;
+    const [ask0, ask1] = sortedAsks;
+
+    const highestBidPrice = bid0?.[0];
+    const highestBidAmount = bid0?.[1];
+
+    const lowestAskPrice = ask0?.[0];
+    const lowestAskAmount = ask0?.[1];
+
+    const totalVol = highestBidAmount + lowestAskAmount;
+    if (!totalVol) return [];
+
+    const probAsk = highestBidAmount / totalVol;
+    const probBid = lowestAskAmount / totalVol;
+
+    return [
+      {
+        price: bid1 ? bid1[0] : null,
+        side: 'BUY',
+        prob: probBid,
+      },
+      {
+        price: lowestAskPrice,
+        side: 'BUY',
+        prob: probAsk,
+      },
+      {
+        price: highestBidPrice,
+        side: 'SELL',
+        prob: probBid,
+      },
+      {
+        price: ask1 ? ask1[0] : null,
+        side: 'SELL',
+        prob: probAsk,
+      },
+    ];
   }
 
 }

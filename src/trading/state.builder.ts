@@ -45,54 +45,38 @@ export class StateBuilder {
   private buildSixLevels(buys: any[], sells: any[], depth: any) {
     const levels: any[] = [];
 
-    let bids = depth.bids.slice(0, 3);
-    let asks = depth.asks.slice(0, 3);
+    const bids = (depth?.bids ?? []).slice(0, 3);
+    const asks = (depth?.asks ?? []).slice(0, 3);
 
-    while (bids.length < 3) bids.push([null, "0"]);
-    while (asks.length < 3) asks.push([null, "0"]);
-
-    // BUY → de menor a mayor
-    const buyLevels = bids
-      .map(([price, qty]) => ({
-        price: price !== null ? Number(Number(price).toFixed(5)) : null,
-        side: "BUY",
-        marketAmount: price !== null ? Number(qty) : 0,
-        userOrders:
-          price !== null
-            ? buys
-                .filter(o => Number(o.price) === Number(price))
-                .map(o => ({
-                  id: o.id,
-                  amount: o.amount,
-                  position: o.position,
-                  min_delante: o.min_delante,
-                  max_delante: o.max_delante,
-                }))
-            : [],
-      }))
-      .sort((a, b) => {
-        if (a.price === null) return 1;
-        if (b.price === null) return -1;
-        return a.price - b.price;
-      });
+    const buyLevels = bids.map(([price, qty]: [number, number]) => ({
+      price: Number(price),
+      side: "BUY",
+      marketAmount: Number(qty),
+      userOrders: buys
+        .filter(o => Number(o.price) === Number(price))
+        .map(o => ({
+          id: o.id,
+          amount: o.amount,
+          position: o.position,
+          min_delante: o.min_delante,
+          max_delante: o.max_delante,
+        })),
+    }));
 
     // SELL → en el orden natural (asks ya vienen crecientes)
-    const sellLevels = asks.map(([price, qty]) => ({
-      price: price !== null ? Number(Number(price).toFixed(5)) : null,
+    const sellLevels = asks.map(([price, qty]: [number, number]) => ({
+      price: Number(price),
       side: "SELL",
-      marketAmount: price !== null ? Number(qty) : 0,
-      userOrders:
-        price !== null
-          ? sells
-              .filter(o => Number(o.price) === Number(price))
-              .map(o => ({
-                id: o.id,
-                amount: o.amount,
-                position: o.position,
-                min_delante: o.min_delante,
-                max_delante: o.max_delante,
-              }))
-          : [],
+      marketAmount: Number(qty),
+      userOrders: sells
+        .filter(o => Number(o.price) === Number(price))
+        .map(o => ({
+          id: o.id,
+          amount: o.amount,
+          position: o.position,
+          min_delante: o.min_delante,
+          max_delante: o.max_delante,
+        })),
     }));
 
     return [...buyLevels, ...sellLevels];
