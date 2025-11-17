@@ -117,29 +117,28 @@ export class TradingService implements OnModuleInit {
   //               PASO 3: TRADE DE MI ORDEN
   // ============================================================
   async handleTradeOrder(order: any) {
-    const targetList = order.side === 'BUY' ? this.buyOrders : this.sellOrders;
-    const targetOrder = targetList.find((o) => o.id === order.orderId);
+    const symbol = order.symbol ?? order.s;
+    const price = Number(order.price ?? order.p);
+    const quantity = Number(order.qty ?? order.q);
+    const makerIndicator = order.makerIndicator ?? order.m;
 
-    const depth = await this.fetchDepth(order.symbol);
+    const targetList = makerIndicator ? this.sellOrders : this.buyOrders;
 
-    if (targetOrder) {
-      const executedQty = Number(order.cumulativeFilledQty ?? 0);
-      const remaining = Math.max(targetOrder.amount - executedQty, 0);
-
-      if (remaining === 0) {
-        const idx = targetList.indexOf(targetOrder);
-        targetList.splice(idx, 1);
-        console.log('✅ Orden llenada y removida:', targetOrder);
-      } else {
-        targetOrder.amount = remaining;
-        await this.processDepthForOrder(targetOrder, depth);
-        console.log('✳️ Orden parcialmente llenada:', targetOrder);
+    for (const record of targetList) {
+      if (record.token === symbol && record.price === price) {
+        record.min_delante -= quantity;
       }
-    } else {
-      console.log('ℹ️ TRADE recibido para orden no encontrada, refrescando depth.');
     }
 
-    await this.broadcastState(depth, order.symbol);
+    const depth = await this.fetchDepth(symbol);
+
+    const marketAmount = this.extractMarketAmount(depth, price);
+
+    if (marketAmount !== null) {
+      this.updateDepthLevel(depth, price, marketAmount);
+    }
+
+    await this.broadcastState(depth, symbol);
   }
 
   // ============================================================
@@ -324,6 +323,30 @@ export class TradingService implements OnModuleInit {
       activeTokens: Array.from(this.activeTokens),
       streams,
     };
+  }
+
+  // ============================================================
+  //               TRADE HELPERS
+  // ============================================================
+  private extractMarketAmount(depth: any, price: number) {
+    const level = [
+      ...(depth?.bids ?? []),
+      ...(depth?.asks ?? []),
+    ].find((l: any) => Number(l?.[0]) === price);
+
+    return level ? Number(level[1]) : null;
+  }
+
+  private updateDepthLevel(depth: any, price: number, marketAmount: number) {
+    const updateLevel = (levels: any[]) => {
+      const level = levels.find((l: any) => Number(l?.[0]) === price);
+      if (level) {
+        level[1] = marketAmount.toString();
+      }
+    };
+
+    updateLevel(depth.bids ?? []);
+    updateLevel(depth.asks ?? []);
   }
 
 }
