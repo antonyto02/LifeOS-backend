@@ -298,6 +298,29 @@ export class TradingService implements OnModuleInit {
     const ws = new WebSocket(url);
 
     this.depthStreams.set(symbol, ws);
+
+    ws.on('message', async (message: WebSocket.Data) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        const payload = parsed?.data ?? parsed;
+
+        const token = payload?.s ?? payload?.symbol;
+        if (!token || !this.isAllowedToken(token)) return;
+
+        const depth = {
+          bids: payload?.b ?? payload?.bids ?? [],
+          asks: payload?.a ?? payload?.asks ?? [],
+        };
+
+        this.depthByToken.set(token, depth);
+
+        this.updateOrdersFromDepth(token, depth);
+
+        await this.broadcastState(depth, token);
+      } catch (err) {
+        console.log('Error procesando mensaje de depth:', err);
+      }
+    });
   }
 
   private openTradeStream(symbol: string) {
@@ -380,6 +403,32 @@ export class TradingService implements OnModuleInit {
 
     updateLevel(depth.bids ?? []);
     updateLevel(depth.asks ?? []);
+  }
+
+  private updateOrdersFromDepth(token: string, depth: any) {
+    const findMarketAmount = (price: number) => {
+      const level = [...(depth?.bids ?? []), ...(depth?.asks ?? [])].find(
+        (l: any) => Number(l?.[0]) === Number(price),
+      );
+
+      return level ? Number(level[1]) : null;
+    };
+
+    const processOrders = (orders: any[]) => {
+      for (const order of orders) {
+        if (order.token !== token) continue;
+
+        const marketAmount = findMarketAmount(order.price);
+        if (marketAmount === null) continue;
+
+        if (order.max_delante === null || marketAmount < order.max_delante) {
+          order.max_delante = marketAmount;
+        }
+      }
+    };
+
+    processOrders(this.buyOrders);
+    processOrders(this.sellOrders);
   }
 
 }
