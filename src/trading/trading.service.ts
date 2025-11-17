@@ -122,7 +122,7 @@ export class TradingService implements OnModuleInit {
     const quantity = Number(order.qty ?? order.q);
     const makerIndicator = order.makerIndicator ?? order.m;
 
-    const targetList = makerIndicator ? this.sellOrders : this.buyOrders;
+    const targetList = makerIndicator ? this.buyOrders : this.sellOrders;
 
     console.log('TRADE recibido:', { s: symbol, p: price, q: quantity, m: makerIndicator });
     console.log('Lista seleccionada:', targetList);
