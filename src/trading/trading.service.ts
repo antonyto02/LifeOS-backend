@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import WebSocket from 'ws';
 import { BinanceClient } from './binance.client';
 import { TradingGateway } from './trading.gateway';
 import { StateBuilder } from './state.builder';
@@ -15,9 +16,12 @@ export class TradingService implements OnModuleInit {
 
   public buyOrders: any[] = [];
   public sellOrders: any[] = [];
+  public activeTokens: Set<string> = new Set();
 
   private stateBuilder: StateBuilder;
   private depthByToken: Map<string, any> = new Map();
+  private depthStreams: Map<string, WebSocket> = new Map();
+  private tradeStreams: Map<string, WebSocket> = new Map();
 
   constructor(
     private readonly binanceClient: BinanceClient,
@@ -58,6 +62,8 @@ export class TradingService implements OnModuleInit {
   //               PASO 1: NUEVA ORDEN
   // ============================================================
   async handleNewOrder(order: any) {
+    this.ensureStreamsForSymbol(order.symbol);
+
     const newOrder = {
       id: order.orderId,
       token: order.symbol,
@@ -101,6 +107,8 @@ export class TradingService implements OnModuleInit {
     const [removed] = targetList.splice(index, 1);
     console.log('🗑️  Orden cancelada y eliminada:', removed);
 
+    this.cleanupStreamsIfNoOrders(order.symbol);
+
     const depth = await this.fetchDepth(order.symbol);
     await this.broadcastState(depth, order.symbol);
   }
@@ -109,29 +117,42 @@ export class TradingService implements OnModuleInit {
   //               PASO 3: TRADE DE MI ORDEN
   // ============================================================
   async handleTradeOrder(order: any) {
-    const targetList = order.side === 'BUY' ? this.buyOrders : this.sellOrders;
-    const targetOrder = targetList.find((o) => o.id === order.orderId);
+    const symbol = order.symbol ?? order.s;
+    const price = Number(order.price ?? order.p);
+    const quantity = Number(order.qty ?? order.q);
+    const makerIndicator = order.makerIndicator ?? order.m;
 
-    const depth = await this.fetchDepth(order.symbol);
+    const targetList = makerIndicator ? this.buyOrders : this.sellOrders;
 
-    if (targetOrder) {
-      const executedQty = Number(order.cumulativeFilledQty ?? 0);
-      const remaining = Math.max(targetOrder.amount - executedQty, 0);
+    console.log('TRADE recibido:', { s: symbol, p: price, q: quantity, m: makerIndicator });
+    console.log('Lista seleccionada:', targetList);
 
-      if (remaining === 0) {
-        const idx = targetList.indexOf(targetOrder);
-        targetList.splice(idx, 1);
-        console.log('✅ Orden llenada y removida:', targetOrder);
-      } else {
-        targetOrder.amount = remaining;
-        await this.processDepthForOrder(targetOrder, depth);
-        console.log('✳️ Orden parcialmente llenada:', targetOrder);
+    let foundMatch = false;
+
+    for (const record of targetList) {
+      if (record.token === symbol && record.price === price) {
+        console.log('Registro encontrado:', record);
+        console.log('min_delante antes:', record.min_delante);
+        console.log('Cantidad a restar:', quantity);
+        record.min_delante -= quantity;
+        console.log('min_delante después:', record.min_delante);
+        foundMatch = true;
       }
-    } else {
-      console.log('ℹ️ TRADE recibido para orden no encontrada, refrescando depth.');
     }
 
-    await this.broadcastState(depth, order.symbol);
+    if (!foundMatch) {
+      console.log('NO se encontró ninguna orden con ese token y precio.');
+    }
+
+    const depth = await this.fetchDepth(symbol);
+
+    const marketAmount = this.extractMarketAmount(depth, price);
+
+    if (marketAmount !== null) {
+      this.updateDepthLevel(depth, price, marketAmount);
+    }
+
+    await this.broadcastState(depth, symbol);
   }
 
   // ============================================================
@@ -247,6 +268,118 @@ export class TradingService implements OnModuleInit {
     }
 
     return depthMap;
+  }
+
+  // ============================================================
+  //               STREAM MANAGEMENT
+  // ============================================================
+  private ensureStreamsForSymbol(symbol: string) {
+    if (this.activeTokens.has(symbol)) return;
+
+    this.activeTokens.add(symbol);
+    this.openDepthStream(symbol);
+    this.openTradeStream(symbol);
+  }
+
+  private cleanupStreamsIfNoOrders(symbol: string) {
+    const hasActiveOrders =
+      this.buyOrders.some((o) => o.token === symbol) ||
+      this.sellOrders.some((o) => o.token === symbol);
+
+    if (hasActiveOrders) return;
+
+    this.closeDepthStream(symbol);
+    this.closeTradeStream(symbol);
+    this.activeTokens.delete(symbol);
+  }
+
+  private openDepthStream(symbol: string) {
+    const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`;
+    const ws = new WebSocket(url);
+
+    this.depthStreams.set(symbol, ws);
+  }
+
+  private openTradeStream(symbol: string) {
+    const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`;
+    const ws = new WebSocket(url);
+
+    ws.on('message', async (message: WebSocket.Data) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        const payload = parsed?.data ?? parsed;
+
+        const tradeEvent = {
+          eventType: 'TRADE',
+          s: payload?.s,
+          p: payload?.p,
+          q: payload?.q,
+          m: payload?.m,
+        };
+
+        await this.handleTradeOrder(tradeEvent);
+      } catch (err) {
+        console.log('Error procesando mensaje de trade:', err);
+      }
+    });
+
+    this.tradeStreams.set(symbol, ws);
+  }
+
+  private closeDepthStream(symbol: string) {
+    const ws = this.depthStreams.get(symbol);
+    if (ws) {
+      ws.close();
+      this.depthStreams.delete(symbol);
+    }
+  }
+
+  private closeTradeStream(symbol: string) {
+    const ws = this.tradeStreams.get(symbol);
+    if (ws) {
+      ws.close();
+      this.tradeStreams.delete(symbol);
+    }
+  }
+
+  getStreamsStatus() {
+    const streams: Record<string, { depth: boolean; trades: boolean }> = {};
+
+    for (const symbol of this.activeTokens) {
+      streams[symbol] = {
+        depth: this.depthStreams.has(symbol),
+        trades: this.tradeStreams.has(symbol),
+      };
+    }
+
+    return {
+      activeTokens: Array.from(this.activeTokens),
+      streams,
+    };
+  }
+
+  // ============================================================
+  //               TRADE HELPERS
+  // ============================================================
+  private extractMarketAmount(depth: any, price: number) {
+    const level = [
+      ...(depth?.bids ?? []),
+      ...(depth?.asks ?? []),
+    ].find((l: any) => Number(l?.[0]) === price);
+
+    return level ? Number(level[1]) : null;
+  }
+
+  private updateDepthLevel(depth: any, price: number, marketAmount: number) {
+    const updateLevel = (levels: any[]) => {
+      const level = levels.find((l: any) => Number(l?.[0]) === price);
+      if (level) {
+        level[1] = marketAmount.toString();
+      }
+    };
+
+    updateLevel(depth.bids ?? []);
+    updateLevel(depth.asks ?? []);
   }
 
 }

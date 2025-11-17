@@ -18,3 +18,13 @@ export class TradingController {
     };
   }
 }
+
+@Controller('streams')
+export class StreamsController {
+  constructor(private readonly tradingService: TradingService) {}
+
+  @Get()
+  getStreams() {
+    return this.tradingService.getStreamsStatus();
+  }
+}
