@@ -420,15 +420,27 @@ export class TradingService implements OnModuleInit {
     }[] = [
       ...depth.bids.slice(0, 3).map(([price, amount]) => ({
         price: Number(price),
-        side: 'BUY',
+        side: 'BUY' as const,
         marketAmount: Number(amount),
-        userOrders: [],
+        userOrders: [] as {
+          id: any;
+          amount: any;
+          position: any;
+          min_delante: any;
+          max_delante: any;
+        }[],
       })),
       ...depth.asks.slice(0, 3).map(([price, amount]) => ({
         price: Number(price),
-        side: 'SELL',
+        side: 'SELL' as const,
         marketAmount: Number(amount),
-        userOrders: [],
+        userOrders: [] as {
+          id: any;
+          amount: any;
+          position: any;
+          min_delante: any;
+          max_delante: any;
+        }[],
       })),
     ];
 
