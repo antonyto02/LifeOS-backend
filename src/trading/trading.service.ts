@@ -124,10 +124,24 @@ export class TradingService implements OnModuleInit {
 
     const targetList = makerIndicator ? this.sellOrders : this.buyOrders;
 
+    console.log('TRADE recibido:', { s: symbol, p: price, q: quantity, m: makerIndicator });
+    console.log('Lista seleccionada:', targetList);
+
+    let foundMatch = false;
+
     for (const record of targetList) {
       if (record.token === symbol && record.price === price) {
+        console.log('Registro encontrado:', record);
+        console.log('min_delante antes:', record.min_delante);
+        console.log('Cantidad a restar:', quantity);
         record.min_delante -= quantity;
+        console.log('min_delante después:', record.min_delante);
+        foundMatch = true;
       }
+    }
+
+    if (!foundMatch) {
+      console.log('NO se encontró ninguna orden con ese token y precio.');
     }
 
     const depth = await this.fetchDepth(symbol);
