@@ -297,6 +297,23 @@ export class TradingService implements OnModuleInit {
     const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`;
     const ws = new WebSocket(url);
 
+    ws.on('message', async (message: WebSocket.Data) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        const payload = parsed?.data ?? parsed;
+
+        const token = (payload?.s ?? symbol).toUpperCase();
+        const bids = payload?.b ?? payload?.bids ?? [];
+        const asks = payload?.a ?? payload?.asks ?? [];
+
+        if (!this.isAllowedToken(token)) return;
+
+        await this.handleDepthStreamEvent(token, { bids, asks });
+      } catch (err) {
+        console.log('Error procesando mensaje de depth:', err);
+      }
+    });
+
     this.depthStreams.set(symbol, ws);
   }
 
@@ -380,6 +397,115 @@ export class TradingService implements OnModuleInit {
 
     updateLevel(depth.bids ?? []);
     updateLevel(depth.asks ?? []);
+  }
+
+  // ============================================================
+  //               DEPTH STREAM HANDLER
+  // ============================================================
+  private async handleDepthStreamEvent(
+    token: string,
+    depth: { bids: any[]; asks: any[] },
+  ) {
+    const levels = [
+      ...depth.bids.slice(0, 3).map(([price, amount]) => ({
+        price: Number(price),
+        side: 'BUY',
+        marketAmount: Number(amount),
+        userOrders: [],
+      })),
+      ...depth.asks.slice(0, 3).map(([price, amount]) => ({
+        price: Number(price),
+        side: 'SELL',
+        marketAmount: Number(amount),
+        userOrders: [],
+      })),
+    ];
+
+    const userOrders = [...this.buyOrders, ...this.sellOrders];
+
+    for (const order of userOrders) {
+      if (order.token !== token) continue;
+
+      const level = levels.find((l) => Number(l.price) === Number(order.price));
+      if (!level) continue;
+
+      if (
+        order.max_delante === null ||
+        order.max_delante === undefined ||
+        level.marketAmount < order.max_delante
+      ) {
+        order.max_delante = level.marketAmount;
+      }
+
+      level.userOrders.push({
+        id: order.id,
+        amount: order.amount,
+        position: order.position,
+        min_delante: order.min_delante,
+        max_delante: order.max_delante,
+      });
+    }
+
+    const normalizedDepth = {
+      bids: depth.bids,
+      asks: depth.asks,
+    };
+
+    this.depthByToken.set(token, normalizedDepth);
+
+    const payload = {
+      [token]: {
+        levels,
+        probabilityRow: this.buildProbabilityRowFromDepth(normalizedDepth),
+      },
+    };
+
+    this.gateway.broadcast(payload);
+    console.log('📡 Depth stream actualizado y enviado al frontend');
+  }
+
+  private buildProbabilityRowFromDepth(depth: any) {
+    if (!depth || !depth.bids?.length || !depth.asks?.length) return [];
+
+    const bid0 = depth.bids[0];
+    const bid1 = depth.bids[1];
+    const ask0 = depth.asks[0];
+    const ask1 = depth.asks[1];
+
+    const highestBidPrice = Number(bid0[0]);
+    const highestBidAmount = Number(bid0[1]);
+
+    const lowestAskPrice = Number(ask0[0]);
+    const lowestAskAmount = Number(ask0[1]);
+
+    const totalVol = highestBidAmount + lowestAskAmount;
+    if (totalVol === 0) return [];
+
+    const probAsk = highestBidAmount / totalVol;
+    const probBid = lowestAskAmount / totalVol;
+
+    return [
+      {
+        price: bid1 ? Number(Number(bid1[0]).toFixed(5)) : null,
+        side: 'BUY',
+        prob: probBid,
+      },
+      {
+        price: Number(Number(ask0[0]).toFixed(5)),
+        side: 'BUY',
+        prob: probAsk,
+      },
+      {
+        price: Number(Number(bid0[0]).toFixed(5)),
+        side: 'SELL',
+        prob: probBid,
+      },
+      {
+        price: ask1 ? Number(Number(ask1[0]).toFixed(5)) : null,
+        side: 'SELL',
+        prob: probAsk,
+      },
+    ];
   }
 
 }
