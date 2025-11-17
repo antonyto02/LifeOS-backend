@@ -501,7 +501,9 @@ export class TradingService implements OnModuleInit {
         userOrders: [],
       }));
 
-    const levels: DepthLevel[] = [...bidLevels, ...askLevels];
+    const levels: DepthLevel[] = [...bidLevels, ...askLevels].sort(
+      (a, b) => a.price - b.price,
+    );
 
     for (const order of [...this.buyOrders, ...this.sellOrders]) {
       if (order.token !== symbol) continue;
