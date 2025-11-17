@@ -9,7 +9,7 @@ export class TradingService implements OnModuleInit {
   private allowedTokens = new Set<string>([
     'ACAUSDT',
     'NKNUSDT',
-    'BTCUSDT',
+    'ACTUSDT',
     'VANRYUSDT',
   ]);
 
