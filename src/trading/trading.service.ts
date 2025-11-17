@@ -406,7 +406,18 @@ export class TradingService implements OnModuleInit {
     token: string,
     depth: { bids: any[]; asks: any[] },
   ) {
-    const levels = [
+    const levels: {
+      price: number;
+      side: 'BUY' | 'SELL';
+      marketAmount: number;
+      userOrders: {
+        id: any;
+        amount: any;
+        position: any;
+        min_delante: any;
+        max_delante: any;
+      }[];
+    }[] = [
       ...depth.bids.slice(0, 3).map(([price, amount]) => ({
         price: Number(price),
         side: 'BUY',
