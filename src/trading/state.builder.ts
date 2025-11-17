@@ -66,7 +66,6 @@ export class StateBuilder {
                   amount: o.amount,
                   position: o.position,
                   min_delante: o.min_delante,
-                  max_delante: o.max_delante,
                 }))
             : [],
       }))
@@ -90,7 +89,6 @@ export class StateBuilder {
                 amount: o.amount,
                 position: o.position,
                 min_delante: o.min_delante,
-                max_delante: o.max_delante,
               }))
           : [],
     }));

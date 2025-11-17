@@ -64,7 +64,6 @@ export class TradingService implements OnModuleInit {
       price: Number(order.price),
       amount: Number(order.qty),
       min_delante: null,
-      max_delante: null,
       position: null,
       side: order.side,
     };
@@ -153,7 +152,6 @@ export class TradingService implements OnModuleInit {
       const delanteReal = Math.max(profundidad - order.amount, 0);
 
       order.min_delante = delanteReal;
-      order.max_delante = delanteReal;
 
       // position = index dentro de su lista
       if (order.side === 'BUY') {
