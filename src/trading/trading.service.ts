@@ -4,6 +4,21 @@ import { BinanceClient } from './binance.client';
 import { TradingGateway } from './trading.gateway';
 import { StateBuilder } from './state.builder';
 
+type DepthLevelUserOrder = {
+  id: any;
+  amount: any;
+  position: any;
+  min_delante: any;
+  max_delante: any;
+};
+
+type DepthLevel = {
+  price: number;
+  side: 'BUY' | 'SELL';
+  marketAmount: number;
+  userOrders: DepthLevelUserOrder[];
+};
+
 @Injectable()
 export class TradingService implements OnModuleInit {
 
@@ -467,22 +482,26 @@ export class TradingService implements OnModuleInit {
     symbol: string,
     sortedBids: [number, number][],
     sortedAsks: [number, number][],
-  ) {
-    const bidLevels = sortedBids.slice(0, 3).map(([price, amount]) => ({
-      price,
-      side: 'BUY' as const,
-      marketAmount: amount,
-      userOrders: [],
-    }));
+  ): DepthLevel[] {
+    const bidLevels: DepthLevel[] = sortedBids
+      .slice(0, 3)
+      .map(([price, amount]): DepthLevel => ({
+        price,
+        side: 'BUY',
+        marketAmount: amount,
+        userOrders: [],
+      }));
 
-    const askLevels = sortedAsks.slice(0, 3).map(([price, amount]) => ({
-      price,
-      side: 'SELL' as const,
-      marketAmount: amount,
-      userOrders: [],
-    }));
+    const askLevels: DepthLevel[] = sortedAsks
+      .slice(0, 3)
+      .map(([price, amount]): DepthLevel => ({
+        price,
+        side: 'SELL',
+        marketAmount: amount,
+        userOrders: [],
+      }));
 
-    const levels = [...bidLevels, ...askLevels];
+    const levels: DepthLevel[] = [...bidLevels, ...askLevels];
 
     for (const order of [...this.buyOrders, ...this.sellOrders]) {
       if (order.token !== symbol) continue;
