@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { TradingService } from './trading.service';
-import { TradingController } from './trading.controller';
+import { StreamsController, TradingController } from './trading.controller';
 import { BinanceClient } from './binance.client';
 import { TradingGateway } from './trading.gateway';
 import { StateBuilder } from './state.builder';
 
 @Module({
-  controllers: [TradingController],
+  controllers: [TradingController, StreamsController],
   providers: [
     TradingService,
     BinanceClient,

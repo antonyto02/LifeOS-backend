@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import WebSocket from 'ws';
 import { BinanceClient } from './binance.client';
 import { TradingGateway } from './trading.gateway';
 import { StateBuilder } from './state.builder';
@@ -15,9 +16,12 @@ export class TradingService implements OnModuleInit {
 
   public buyOrders: any[] = [];
   public sellOrders: any[] = [];
+  public activeTokens: Set<string> = new Set();
 
   private stateBuilder: StateBuilder;
   private depthByToken: Map<string, any> = new Map();
+  private depthStreams: Map<string, WebSocket> = new Map();
+  private tradeStreams: Map<string, WebSocket> = new Map();
 
   constructor(
     private readonly binanceClient: BinanceClient,
@@ -58,6 +62,8 @@ export class TradingService implements OnModuleInit {
   //               PASO 1: NUEVA ORDEN
   // ============================================================
   async handleNewOrder(order: any) {
+    this.ensureStreamsForSymbol(order.symbol);
+
     const newOrder = {
       id: order.orderId,
       token: order.symbol,
@@ -100,6 +106,8 @@ export class TradingService implements OnModuleInit {
 
     const [removed] = targetList.splice(index, 1);
     console.log('🗑️  Orden cancelada y eliminada:', removed);
+
+    this.cleanupStreamsIfNoOrders(order.symbol);
 
     const depth = await this.fetchDepth(order.symbol);
     await this.broadcastState(depth, order.symbol);
@@ -247,6 +255,75 @@ export class TradingService implements OnModuleInit {
     }
 
     return depthMap;
+  }
+
+  // ============================================================
+  //               STREAM MANAGEMENT
+  // ============================================================
+  private ensureStreamsForSymbol(symbol: string) {
+    if (this.activeTokens.has(symbol)) return;
+
+    this.activeTokens.add(symbol);
+    this.openDepthStream(symbol);
+    this.openTradeStream(symbol);
+  }
+
+  private cleanupStreamsIfNoOrders(symbol: string) {
+    const hasActiveOrders =
+      this.buyOrders.some((o) => o.token === symbol) ||
+      this.sellOrders.some((o) => o.token === symbol);
+
+    if (hasActiveOrders) return;
+
+    this.closeDepthStream(symbol);
+    this.closeTradeStream(symbol);
+    this.activeTokens.delete(symbol);
+  }
+
+  private openDepthStream(symbol: string) {
+    const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`;
+    const ws = new WebSocket(url);
+
+    this.depthStreams.set(symbol, ws);
+  }
+
+  private openTradeStream(symbol: string) {
+    const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`;
+    const ws = new WebSocket(url);
+
+    this.tradeStreams.set(symbol, ws);
+  }
+
+  private closeDepthStream(symbol: string) {
+    const ws = this.depthStreams.get(symbol);
+    if (ws) {
+      ws.close();
+      this.depthStreams.delete(symbol);
+    }
+  }
+
+  private closeTradeStream(symbol: string) {
+    const ws = this.tradeStreams.get(symbol);
+    if (ws) {
+      ws.close();
+      this.tradeStreams.delete(symbol);
+    }
+  }
+
+  getStreamsStatus() {
+    const streams: Record<string, { depth: boolean; trades: boolean }> = {};
+
+    for (const symbol of this.activeTokens) {
+      streams[symbol] = {
+        depth: this.depthStreams.has(symbol),
+        trades: this.tradeStreams.has(symbol),
+      };
+    }
+
+    return {
+      activeTokens: Array.from(this.activeTokens),
+      streams,
+    };
   }
 
 }
