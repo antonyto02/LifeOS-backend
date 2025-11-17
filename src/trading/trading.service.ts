@@ -304,6 +304,25 @@ export class TradingService implements OnModuleInit {
     const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@trade`;
     const ws = new WebSocket(url);
 
+    ws.on('message', async (message: WebSocket.Data) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        const payload = parsed?.data ?? parsed;
+
+        const tradeEvent = {
+          eventType: 'TRADE',
+          s: payload?.s,
+          p: payload?.p,
+          q: payload?.q,
+          m: payload?.m,
+        };
+
+        await this.handleTradeOrder(tradeEvent);
+      } catch (err) {
+        console.log('Error procesando mensaje de trade:', err);
+      }
+    });
+
     this.tradeStreams.set(symbol, ws);
   }
 
