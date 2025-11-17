@@ -406,6 +406,8 @@ export class TradingService implements OnModuleInit {
     token: string,
     depth: { bids: any[]; asks: any[] },
   ) {
+    console.log('📥 DEPTH stream recibido', token, depth);
+
     const levels: {
       price: number;
       side: 'BUY' | 'SELL';
