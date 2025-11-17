@@ -297,6 +297,27 @@ export class TradingService implements OnModuleInit {
     const url = `wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@depth`;
     const ws = new WebSocket(url);
 
+    ws.on('message', async (message: WebSocket.Data) => {
+      try {
+        const parsed = JSON.parse(message.toString());
+        const payload = parsed?.data ?? parsed;
+        const token = payload?.s ?? symbol;
+
+        const depth = {
+          bids: payload?.b ?? payload?.bids ?? [],
+          asks: payload?.a ?? payload?.asks ?? [],
+        };
+
+        this.depthByToken.set(token, depth);
+
+        this.updateOrdersWithDepth(token, depth);
+
+        await this.broadcastState(depth, token);
+      } catch (err) {
+        console.log('Error procesando mensaje de depth:', err);
+      }
+    });
+
     this.depthStreams.set(symbol, ws);
   }
 
@@ -361,6 +382,37 @@ export class TradingService implements OnModuleInit {
   // ============================================================
   //               TRADE HELPERS
   // ============================================================
+  private updateOrdersWithDepth(token: string, depth: any) {
+    const bids = depth?.bids ?? depth?.b ?? [];
+    const asks = depth?.asks ?? depth?.a ?? [];
+
+    for (const order of this.buyOrders) {
+      if (order.token !== token) continue;
+
+      const level = bids.find((l: any) => Number(l?.[0]) === Number(order.price));
+      if (!level) continue;
+
+      const marketAmount = Number(level[1]);
+
+      if (order.max_delante === null || marketAmount < order.max_delante) {
+        order.max_delante = marketAmount;
+      }
+    }
+
+    for (const order of this.sellOrders) {
+      if (order.token !== token) continue;
+
+      const level = asks.find((l: any) => Number(l?.[0]) === Number(order.price));
+      if (!level) continue;
+
+      const marketAmount = Number(level[1]);
+
+      if (order.max_delante === null || marketAmount < order.max_delante) {
+        order.max_delante = marketAmount;
+      }
+    }
+  }
+
   private extractMarketAmount(depth: any, price: number) {
     const level = [
       ...(depth?.bids ?? []),
