@@ -65,12 +65,8 @@ export class TradingService implements OnModuleInit {
       return this.handleNewOrder(order);
     }
 
-    if (order.eventType === 'CANCELED' || order.eventType === 'FILLED') {
+    if (order.eventType === 'CANCELED' || order.eventType === 'TRADE') {
       return this.handleCanceledOrder(order);
-    }
-
-    if (order.eventType === 'TRADE') {
-      return this.handleTradeOrder(order);
     }
   }
 
