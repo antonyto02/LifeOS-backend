@@ -423,6 +423,9 @@ export class TradingService implements OnModuleInit {
     bidsDelta: [string, string][],
     asksDelta: [string, string][],
   ) {
+    this.applyDepthImpact(symbol, bidsDelta, 'BUY');
+    this.applyDepthImpact(symbol, asksDelta, 'SELL');
+
     const orderBook = this.ensureOrderBook(symbol);
 
     for (const [priceStr, amountStr] of bidsDelta) {
@@ -472,6 +475,31 @@ export class TradingService implements OnModuleInit {
     };
 
     this.gateway.broadcast(payload);
+  }
+
+  private applyDepthImpact(
+    symbol: string,
+    deltas: [string, string][],
+    side: 'BUY' | 'SELL',
+  ) {
+    const targetOrders = side === 'BUY' ? this.buyOrders : this.sellOrders;
+
+    for (const [priceStr, amountStr] of deltas) {
+      const price = Number(priceStr);
+      const amount = Number(amountStr);
+
+      for (const order of targetOrders) {
+        if (order.token !== symbol || order.price !== price) continue;
+
+        if (typeof order.min_delante === 'number') {
+          order.min_delante -= amount;
+        }
+
+        if (typeof order.max_delante === 'number') {
+          order.max_delante -= amount;
+        }
+      }
+    }
   }
 
   private buildDepthLevels(
