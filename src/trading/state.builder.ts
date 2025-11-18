@@ -48,36 +48,39 @@ export class StateBuilder {
     const bids = (depth?.bids ?? []).slice(0, 3);
     const asks = (depth?.asks ?? []).slice(0, 3);
 
-    const buyLevels = bids.map(([price, qty]: [number, number]) => ({
-      price: Number(price),
-      side: "BUY",
-      marketAmount: Number(qty),
-      userOrders: buys
-        .filter(o => Number(o.price) === Number(price))
-        .map(o => ({
-          id: o.id,
-          amount: o.amount,
-          position: o.position,
-          min_delante: o.min_delante,
-          max_delante: o.max_delante,
-        })),
-    }));
+    const buyLevels = bids
+      .map(([price, qty]: [number, number]) => ({
+        price: Number(price),
+        side: "BUY",
+        marketAmount: Number(qty),
+        userOrders: buys
+          .filter(o => Number(o.price) === Number(price))
+          .map(o => ({
+            id: o.id,
+            amount: o.amount,
+            position: o.position,
+            min_delante: o.min_delante,
+            max_delante: o.max_delante,
+          })),
+      }))
+      .sort((a, b) => a.price - b.price);
 
-    // SELL → en el orden natural (asks ya vienen crecientes)
-    const sellLevels = asks.map(([price, qty]: [number, number]) => ({
-      price: Number(price),
-      side: "SELL",
-      marketAmount: Number(qty),
-      userOrders: sells
-        .filter(o => Number(o.price) === Number(price))
-        .map(o => ({
-          id: o.id,
-          amount: o.amount,
-          position: o.position,
-          min_delante: o.min_delante,
-          max_delante: o.max_delante,
-        })),
-    }));
+    const sellLevels = asks
+      .map(([price, qty]: [number, number]) => ({
+        price: Number(price),
+        side: "SELL",
+        marketAmount: Number(qty),
+        userOrders: sells
+          .filter(o => Number(o.price) === Number(price))
+          .map(o => ({
+            id: o.id,
+            amount: o.amount,
+            position: o.position,
+            min_delante: o.min_delante,
+            max_delante: o.max_delante,
+          })),
+      }))
+      .sort((a, b) => a.price - b.price);
 
     return [...buyLevels, ...sellLevels];
   }
