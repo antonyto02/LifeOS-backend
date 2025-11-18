@@ -490,7 +490,8 @@ export class TradingService implements OnModuleInit {
         side: 'BUY',
         marketAmount: amount,
         userOrders: [],
-      }));
+      }))
+      .sort((a, b) => a.price - b.price);
 
     const askLevels: DepthLevel[] = sortedAsks
       .slice(0, 3)
@@ -499,7 +500,8 @@ export class TradingService implements OnModuleInit {
         side: 'SELL',
         marketAmount: amount,
         userOrders: [],
-      }));
+      }))
+      .sort((a, b) => a.price - b.price);
 
     const levels: DepthLevel[] = [...bidLevels, ...askLevels];
 
