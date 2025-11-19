@@ -5,6 +5,11 @@ import WebSocket from 'ws';
 export class BinanceDepthStreamService {
   private depthConnections: Record<string, WebSocket> = {};
 
+  // 👉 Nuevo método para /investments/connections
+  getOpenConnections(): string[] {
+    return Object.keys(this.depthConnections);
+  }
+
   openDepthStream(symbol: string) {
     const lower = symbol.toLowerCase();
 

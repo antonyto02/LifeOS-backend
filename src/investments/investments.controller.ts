@@ -1,12 +1,16 @@
 import { Controller, Get } from '@nestjs/common';
 import { AllowedTokensState } from './state/allowed-tokens.state';
 import { ActiveTokensState } from './state/active-tokens.state';
+import { BinanceDepthStreamService } from './stream/binance-depth-stream.service';
+import { BinanceAggTradeStreamService } from './stream/binance-aggtrade-stream.service';
 
 @Controller('investments')
 export class InvestmentsController {
   constructor(
     private readonly allowedTokens: AllowedTokensState,
     private readonly activeTokens: ActiveTokensState,
+    private readonly depthStream: BinanceDepthStreamService,
+    private readonly aggTradeStream: BinanceAggTradeStreamService,
   ) {}
 
   @Get('allowedtokens')
@@ -17,5 +21,13 @@ export class InvestmentsController {
   @Get('activetokens')
   getActiveTokens() {
     return this.activeTokens.getAll();
+  }
+
+  @Get('connections')
+  getConnections() {
+    return {
+      depth: this.depthStream.getOpenConnections(),
+      aggtrade: this.aggTradeStream.getOpenConnections(),
+    };
   }
 }

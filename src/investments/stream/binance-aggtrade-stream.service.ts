@@ -5,6 +5,11 @@ import WebSocket from 'ws';
 export class BinanceAggTradeStreamService {
   private aggTradeConnections: Record<string, WebSocket> = {};
 
+  // 👉 Nuevo método para /investments/connections
+  getOpenConnections(): string[] {
+    return Object.keys(this.aggTradeConnections);
+  }
+
   openAggTradeStream(symbol: string) {
     const lower = symbol.toLowerCase();
 
