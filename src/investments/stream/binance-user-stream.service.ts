@@ -1,10 +1,15 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import axios from 'axios';
 import WebSocket from 'ws';
+import { UserEventsLogic } from '../logic/user-events.logic';
 
 @Injectable()
 export class BinanceUserStreamService implements OnModuleInit {
   private ws: WebSocket;
+
+  constructor(
+    private readonly logicService: UserEventsLogic,
+  ) {}
 
   async onModuleInit() {
     const listenKey = await this.createListenKey();
@@ -33,17 +38,14 @@ export class BinanceUserStreamService implements OnModuleInit {
       const msg = JSON.parse(raw.toString());
 
       if (msg.e === 'executionReport') {
-        // Aquí luego enviaremos el evento a logic/orderbook/bot.
-        // De momento, dejamos vacío.
+        this.logicService.handleUserExecutionReport(msg);
       }
     });
 
     this.ws.on('close', () => {
-      this.connect(listenKey); // reconexión silenciosa
+      this.connect(listenKey);
     });
 
-    this.ws.on('error', () => {
-      // error silencioso para no ensuciar la consola
-    });
+    this.ws.on('error', () => {});
   }
 }
