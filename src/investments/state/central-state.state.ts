@@ -10,11 +10,8 @@ export interface CentralStateEntry {
 
 @Injectable()
 export class CentralState {
-  // Estructura:
-  // centralState[token] = { ... }
   private centralState: Record<string, CentralStateEntry> = {};
 
-  /** Asegura que el token exista */
   private ensureToken(token: string): void {
     if (!this.centralState[token]) {
       this.centralState[token] = {
@@ -27,18 +24,15 @@ export class CentralState {
     }
   }
 
-  /** Obtener todo el estado */
   getAll() {
     return this.centralState;
   }
 
-  /** Obtener estado individual */
   get(token: string): CentralStateEntry {
     this.ensureToken(token);
     return this.centralState[token];
   }
 
-  /** Actualizar precio central de BUY */
   updateCentralBuyPrice(token: string, newPrice: number): void {
     this.ensureToken(token);
 
@@ -46,11 +40,10 @@ export class CentralState {
 
     if (entry.centralBuyPrice !== newPrice) {
       entry.centralBuyPrice = newPrice;
-      entry.executedSinceBuyPriceChange = 0; // reset
+      entry.executedSinceBuyPriceChange = 0;
     }
   }
 
-  /** Actualizar precio central de SELL */
   updateCentralSellPrice(token: string, newPrice: number): void {
     this.ensureToken(token);
 
@@ -58,23 +51,20 @@ export class CentralState {
 
     if (entry.centralSellPrice !== newPrice) {
       entry.centralSellPrice = newPrice;
-      entry.executedSinceSellPriceChange = 0; // reset
+      entry.executedSinceSellPriceChange = 0;
     }
   }
 
-  /** Sumar volumen ejecutado en BUY */
   addExecutedBuy(token: string, executed: number): void {
     this.ensureToken(token);
     this.centralState[token].executedSinceBuyPriceChange += executed;
   }
 
-  /** Sumar volumen ejecutado en SELL */
   addExecutedSell(token: string, executed: number): void {
     this.ensureToken(token);
     this.centralState[token].executedSinceSellPriceChange += executed;
   }
 
-  /** Limpiar un token */
   clearToken(token: string): void {
     this.centralState[token] = {
       centralBuyPrice: null,
@@ -85,7 +75,6 @@ export class CentralState {
     };
   }
 
-  /** Limpiar todo el estado */
   clearAll(): void {
     this.centralState = {};
   }
