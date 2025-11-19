@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { BinanceUserStreamService } from './binance-user-stream.service';
 import { BinanceDepthStreamService } from './binance-depth-stream.service';
 import { BinanceAggTradeStreamService } from './binance-aggtrade-stream.service';
@@ -6,7 +6,7 @@ import { LogicModule } from '../logic/logic.module';
 
 @Module({
   imports: [
-    LogicModule
+    forwardRef(() => LogicModule)
   ],
   providers: [
     BinanceUserStreamService,
