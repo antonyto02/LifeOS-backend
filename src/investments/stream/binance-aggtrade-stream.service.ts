@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import WebSocket from 'ws';
+import { AggTradeEventsLogic } from '../logic/aggtrade-events.logic';
 
 @Injectable()
 export class BinanceAggTradeStreamService {
   private aggTradeConnections: Record<string, WebSocket> = {};
 
-  // 👉 Nuevo método para /investments/connections
+  constructor(
+    private readonly aggTradeEventsLogic: AggTradeEventsLogic,
+  ) {}
+
+  // 👉 Método para /investments/connections
   getOpenConnections(): string[] {
     return Object.keys(this.aggTradeConnections);
   }
@@ -32,6 +37,9 @@ export class BinanceAggTradeStreamService {
     ws.on('message', (msg: any) => {
       console.log(`\n🟢 [AGGTRADE MESSAGE - ${symbol}]`);
       console.log(msg.toString());
+
+      // 👉 Redirigir evento al manejador correcto
+      this.aggTradeEventsLogic.handleAggTradeMessage(symbol, msg.toString());
     });
 
     ws.on('close', () => {
