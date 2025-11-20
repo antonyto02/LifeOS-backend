@@ -3,6 +3,7 @@ import { AllowedTokensState } from '../state/allowed-tokens.state';
 import { ActiveTokensState } from '../state/active-tokens.state';
 import { BinanceDepthStreamService } from '../stream/binance-depth-stream.service';
 import { BinanceAggTradeStreamService } from '../stream/binance-aggtrade-stream.service';
+import { StateUpdaterLogic } from './state-updater.logic';
 
 @Injectable()
 export class UserEventsLogic {
@@ -11,6 +12,7 @@ export class UserEventsLogic {
     private readonly activeTokens: ActiveTokensState,
     private readonly depthStream: BinanceDepthStreamService,
     private readonly aggTradeStream: BinanceAggTradeStreamService,
+    private readonly stateUpdater: StateUpdaterLogic
   ) {}
 
   handleUserExecutionReport(msg: any) {
@@ -24,12 +26,7 @@ export class UserEventsLogic {
     if (orderType !== 'LIMIT') return;
 
     if (execType === 'NEW') {
-      if (!this.activeTokens.has(symbol)) {
-        this.activeTokens.add(symbol);
-
-        this.depthStream.openDepthStream(symbol);
-        this.aggTradeStream.openAggTradeStream(symbol);
-      }
+      this.stateUpdater.maybeActivateToken(symbol);
       return;
     }
 
