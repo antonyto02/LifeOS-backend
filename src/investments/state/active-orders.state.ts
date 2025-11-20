@@ -5,6 +5,9 @@ export interface ActiveOrder {
   pending_amount: number;
   queue_position: number;
   filled_amount: number;
+  token: string;
+  side: 'BUY' | 'SELL';
+  price: number;
 }
 
 @Injectable()

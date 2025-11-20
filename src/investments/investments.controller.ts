@@ -4,7 +4,9 @@ import { ActiveTokensState } from './state/active-tokens.state';
 import { BinanceDepthStreamService } from './stream/binance-depth-stream.service';
 import { BinanceAggTradeStreamService } from './stream/binance-aggtrade-stream.service';
 import { DepthState } from './state/depth.state';
-import { CentralState } from './state/central-state.state';
+import { CentralState } from './state/central-state.state';import { ActiveOrdersState } from './state/active-orders.state';
+
+
 
 
 @Controller('investments')
@@ -16,6 +18,8 @@ export class InvestmentsController {
     private readonly aggTradeStream: BinanceAggTradeStreamService,
     private readonly depthState: DepthState,
     private readonly centralState: CentralState,
+    private readonly activeOrders: ActiveOrdersState
+
   ) {}
 
   @Get('allowedtokens')
@@ -44,5 +48,10 @@ export class InvestmentsController {
   getCentral() {
     return this.centralState.getAll();
   }
+
+  @Get('orders')
+  getOrders() {
+    return this.activeOrders.getAll();
+}
 
 }

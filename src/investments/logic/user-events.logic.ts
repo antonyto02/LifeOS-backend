@@ -28,9 +28,21 @@ export class UserEventsLogic {
     if (execType === 'NEW') {
       this.stateUpdater.maybeActivateToken(symbol);
       const depth = await this.stateUpdater.fetchDepth(symbol);
-      console.log('[DEPTH GET]', depth);
       this.stateUpdater.updateDepthState(symbol, depth);
       this.stateUpdater.updateCentralState(symbol);
+      const side = msg.S;
+      const price = parseFloat(msg.p);
+      const qty = parseFloat(msg.q);
+      const orderId = msg.i;
+
+      this.stateUpdater.createOrUpdateOrder(
+        symbol,
+        side,
+        price,
+        qty,
+        depth,
+        orderId
+      );
       return;
     }
 

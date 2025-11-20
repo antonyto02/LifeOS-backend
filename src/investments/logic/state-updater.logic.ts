@@ -5,6 +5,8 @@ import { BinanceDepthStreamService } from '../stream/binance-depth-stream.servic
 import { BinanceAggTradeStreamService } from '../stream/binance-aggtrade-stream.service';
 import { DepthState } from '../state/depth.state';
 import { CentralState } from '../state/central-state.state';
+import { ActiveOrdersState } from '../state/active-orders.state';
+
 
 
 export interface DepthData {
@@ -20,6 +22,7 @@ export class StateUpdaterLogic {
     private readonly aggTradeStream: BinanceAggTradeStreamService,
     private readonly depthState: DepthState,
     private readonly centralState: CentralState,
+    private readonly activeOrders: ActiveOrdersState,
     
     
   ) {}
@@ -121,6 +124,49 @@ updateCentralState(symbol: string): void {
   this.centralState.updateCentralBuyPrice(symbol, centralBuy);
   this.centralState.updateCentralSellPrice(symbol, centralSell);
 }
+
+createOrUpdateOrder(
+  symbol: string,
+  side: 'BUY' | 'SELL',
+  price: number,
+  qty: number,
+  depth: DepthData,
+  orderId: number
+): void {
+
+
+  const priceKey = price.toString();
+
+  // 1. Buscar profundidad del precio exacto (precio del usuario)
+  let marketDepthAtPrice = 0;
+
+  if (side === 'BUY') {
+    const level = depth.bids.find(([p]) => p === price);
+    marketDepthAtPrice = level ? level[1] : 0;
+  } else {
+    const level = depth.asks.find(([p]) => p === price);
+    marketDepthAtPrice = level ? level[1] : 0;
+  }
+
+  // 2. Calcular queue_position
+  const queuePos = Math.max(marketDepthAtPrice - qty, 0);
+
+  // 3. Crear la orden completa con los 7 atributos
+  const order = {
+    id: orderId,
+    pending_amount: qty,
+    queue_position: queuePos,
+    filled_amount: 0,
+
+    token: symbol,
+    side,
+    price,
+  };
+
+  // 4. Insertar la orden en ActiveOrdersState
+  this.activeOrders.setOrder(symbol, side, priceKey, order);
+}
+
 
 
 }
