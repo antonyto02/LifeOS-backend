@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { StateUpdaterLogic } from './state-updater.logic';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
 
 @Injectable()
 export class DepthEventsLogic {
   constructor(
+    @Inject(forwardRef(() => StateUpdaterLogic))
     private readonly stateUpdater: StateUpdaterLogic,
     private readonly snapshotGateway: SnapshotGateway,
   ) {}
