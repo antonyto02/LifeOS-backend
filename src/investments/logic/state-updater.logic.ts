@@ -24,9 +24,15 @@ export class StateUpdaterLogic {
     private readonly depthState: DepthState,
     private readonly centralState: CentralState,
     private readonly activeOrders: ActiveOrdersState,
-    
-    
+
+
   ) {}
+
+  private normalizePriceKey(price: number | string): string {
+    const numeric = Number(price);
+
+    return Number.isFinite(numeric) ? numeric.toString() : price.toString();
+  }
 
   maybeActivateToken(symbol: string): void {
     if (!this.activeTokens.has(symbol)) {
@@ -83,13 +89,15 @@ export class StateUpdaterLogic {
     const sortedBids = [...bids].sort((a, b) => a[0] - b[0]);
 
     for (const [price, qty] of sortedBids) {
-      buyMap[price.toString()] = qty;
+      const key = this.normalizePriceKey(price);
+      buyMap[key] = qty;
     }
 
     const sortedAsks = [...asks].sort((a, b) => a[0] - b[0]);
 
     for (const [price, qty] of sortedAsks) {
-      sellMap[price.toString()] = qty;
+      const key = this.normalizePriceKey(price);
+      sellMap[key] = qty;
     }
     this.depthState.setSnapshot(symbol, buyMap, sellMap);
   }
@@ -121,7 +129,7 @@ createOrUpdateOrder(
 ): void {
 
 
-  const priceKey = price.toString();
+  const priceKey = this.normalizePriceKey(price);
   let marketDepthAtPrice = 0;
 
   if (side === 'BUY') {
@@ -272,7 +280,7 @@ applyDelta(
 
   // 👉 Actualizar BIDS
   for (const [price, qty] of bids) {
-    const key = price.toString();
+    const key = this.normalizePriceKey(price);
 
     if (qty === 0) {
       delete buyLevels[key];
@@ -283,7 +291,7 @@ applyDelta(
 
   // 👉 Actualizar ASKS
   for (const [price, qty] of asks) {
-    const key = price.toString();
+    const key = this.normalizePriceKey(price);
 
     if (qty === 0) {
       delete sellLevels[key];
@@ -306,7 +314,7 @@ private updateQueuePositionsAfterDepthDelta(
 
   // BUY SIDE — revisar cambios en bids
   for (const [price, newDepth] of bids) {
-    const key = price.toString();
+    const key = this.normalizePriceKey(price);
     const order = active.BUY?.[key];
     if (!order) continue;
 
@@ -325,7 +333,7 @@ private updateQueuePositionsAfterDepthDelta(
 
   // SELL SIDE — revisar cambios en asks
   for (const [price, newDepth] of asks) {
-    const key = price.toString();
+    const key = this.normalizePriceKey(price);
     const order = active.SELL?.[key];
     if (!order) continue;
 
