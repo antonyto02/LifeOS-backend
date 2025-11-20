@@ -34,6 +34,33 @@ export class StateUpdaterLogic {
     return Number.isFinite(numeric) ? numeric.toString() : price.toString();
   }
 
+  private findExistingPriceKey(
+    levels: Record<string, number>,
+    price: number | string,
+  ): string | null {
+    const numericPrice = Number(price);
+
+    if (!Number.isFinite(numericPrice)) {
+      return null;
+    }
+
+    const normalized = this.normalizePriceKey(numericPrice);
+
+    if (normalized in levels) {
+      return normalized;
+    }
+
+    for (const key of Object.keys(levels)) {
+      const numericKey = Number(key);
+
+      if (Number.isFinite(numericKey) && numericKey === numericPrice) {
+        return key;
+      }
+    }
+
+    return null;
+  }
+
   maybeActivateToken(symbol: string): void {
     if (!this.activeTokens.has(symbol)) {
       this.activeTokens.add(symbol);
@@ -280,24 +307,22 @@ applyDelta(
 
   // 👉 Actualizar BIDS
   for (const [price, qty] of bids) {
-    const key = this.normalizePriceKey(price);
+    const existingKey = this.findExistingPriceKey(buyLevels, price);
 
-    if (qty === 0) {
-      delete buyLevels[key];
-    } else {
-      buyLevels[key] = qty;
-    }
+    if (!existingKey) continue;
+
+    if (qty === 0) delete buyLevels[existingKey];
+    else buyLevels[existingKey] = qty;
   }
 
   // 👉 Actualizar ASKS
   for (const [price, qty] of asks) {
-    const key = this.normalizePriceKey(price);
+    const existingKey = this.findExistingPriceKey(sellLevels, price);
 
-    if (qty === 0) {
-      delete sellLevels[key];
-    } else {
-      sellLevels[key] = qty;
-    }
+    if (!existingKey) continue;
+
+    if (qty === 0) delete sellLevels[existingKey];
+    else sellLevels[existingKey] = qty;
   }
   this.updateQueuePositionsAfterDepthDelta(symbol, bids, asks);
 
@@ -314,8 +339,10 @@ private updateQueuePositionsAfterDepthDelta(
 
   // BUY SIDE — revisar cambios en bids
   for (const [price, newDepth] of bids) {
-    const key = this.normalizePriceKey(price);
-    const order = active.BUY?.[key];
+    const existingKey = this.findExistingPriceKey(active.BUY ?? {}, price);
+    if (!existingKey) continue;
+
+    const order = active.BUY?.[existingKey];
     if (!order) continue;
 
     const combined = order.queue_position + order.pending_amount;
@@ -323,18 +350,20 @@ private updateQueuePositionsAfterDepthDelta(
     if (newDepth < combined) {
       const newQueue = Math.max(newDepth - order.pending_amount, 0);
       order.queue_position = newQueue;
-      this.activeOrders.setOrder(symbol, 'BUY', key, order);
+      this.activeOrders.setOrder(symbol, 'BUY', existingKey, order);
 
       console.log(
-        `[Δ BUY] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`
+        `[Δ BUY] ${symbol} @ ${existingKey} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`
       );
     }
   }
 
   // SELL SIDE — revisar cambios en asks
   for (const [price, newDepth] of asks) {
-    const key = this.normalizePriceKey(price);
-    const order = active.SELL?.[key];
+    const existingKey = this.findExistingPriceKey(active.SELL ?? {}, price);
+    if (!existingKey) continue;
+
+    const order = active.SELL?.[existingKey];
     if (!order) continue;
 
     const combined = order.queue_position + order.pending_amount;
@@ -342,10 +371,10 @@ private updateQueuePositionsAfterDepthDelta(
     if (newDepth < combined) {
       const newQueue = Math.max(newDepth - order.pending_amount, 0);
       order.queue_position = newQueue;
-      this.activeOrders.setOrder(symbol, 'SELL', key, order);
+      this.activeOrders.setOrder(symbol, 'SELL', existingKey, order);
 
       console.log(
-        `[Δ SELL] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`
+        `[Δ SELL] ${symbol} @ ${existingKey} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`
       );
     }
   }
