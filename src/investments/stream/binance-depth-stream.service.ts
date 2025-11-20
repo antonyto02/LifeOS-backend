@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import WebSocket from 'ws';
+import { DepthEventsLogic } from '../logic/depth-events.logic';
 
 @Injectable()
 export class BinanceDepthStreamService {
   private depthConnections: Record<string, WebSocket> = {};
 
-  // 👉 Nuevo método para /investments/connections
+  constructor(private readonly depthEventsLogic: DepthEventsLogic) {}
+
   getOpenConnections(): string[] {
     return Object.keys(this.depthConnections);
   }
@@ -30,8 +32,12 @@ export class BinanceDepthStreamService {
     });
 
     ws.on('message', (msg: any) => {
+      // 🔵 Log opcional
       console.log(`\n🔵 [DEPTH MESSAGE - ${symbol}]`);
       console.log(msg.toString());
+
+      // 👉 Aquí enviamos el evento al procesador
+      this.depthEventsLogic.handleDepthMessage(symbol, msg.toString());
     });
 
     ws.on('close', () => {

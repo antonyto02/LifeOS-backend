@@ -93,4 +93,6 @@ export class DepthState {
       SELL: sell,
     };
   }
+
+  
 }

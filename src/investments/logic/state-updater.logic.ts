@@ -254,7 +254,93 @@ applyPartialFill(orderId: number, filledQty: number): void {
   );
 }
 
+applyDelta(
+  symbol: string,
+  bids: Array<[number, number]>,
+  asks: Array<[number, number]>
+): void {
 
+  // Asegurar que exista el contenedor en depthState
+  if (!this.depthState.getAll()[symbol]) {
+    this.depthState.setSnapshot(symbol, {}, {});
+  }
+
+  const current = this.depthState.getAll()[symbol];
+  const buyLevels = current.BUY;
+  const sellLevels = current.SELL;
+
+  // 👉 Actualizar BIDS
+  for (const [price, qty] of bids) {
+    const key = price.toString();
+
+    if (qty === 0) {
+      delete buyLevels[key];
+    } else {
+      buyLevels[key] = qty;
+    }
+  }
+
+  // 👉 Actualizar ASKS
+  for (const [price, qty] of asks) {
+    const key = price.toString();
+
+    if (qty === 0) {
+      delete sellLevels[key];
+    } else {
+      sellLevels[key] = qty;
+    }
+  }
+  this.updateQueuePositionsAfterDepthDelta(symbol, bids, asks);
+
+}
+
+private updateQueuePositionsAfterDepthDelta(
+  symbol: string,
+  bids: Array<[number, number]>,
+  asks: Array<[number, number]>
+): void {
+
+  const active = this.activeOrders.getAll()[symbol];
+  if (!active) return;
+
+  // BUY SIDE — revisar cambios en bids
+  for (const [price, newDepth] of bids) {
+    const key = price.toString();
+    const order = active.BUY?.[key];
+    if (!order) continue;
+
+    const combined = order.queue_position + order.pending_amount;
+
+    if (newDepth < combined) {
+      const newQueue = Math.max(newDepth - order.pending_amount, 0);
+      order.queue_position = newQueue;
+      this.activeOrders.setOrder(symbol, 'BUY', key, order);
+
+      console.log(
+        `[Δ BUY] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`
+      );
+    }
+  }
+
+  // SELL SIDE — revisar cambios en asks
+  for (const [price, newDepth] of asks) {
+    const key = price.toString();
+    const order = active.SELL?.[key];
+    if (!order) continue;
+
+    const combined = order.queue_position + order.pending_amount;
+
+    if (newDepth < combined) {
+      const newQueue = Math.max(newDepth - order.pending_amount, 0);
+      order.queue_position = newQueue;
+      this.activeOrders.setOrder(symbol, 'SELL', key, order);
+
+      console.log(
+        `[Δ SELL] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`
+      );
+    }
+  }
+}
 
 
 }
