@@ -35,7 +35,7 @@ export class StateUpdaterLogic {
   }
 
   private findExistingPriceKey(
-    levels: Record<string, number>,
+    levels: Record<string, number | ActiveOrder>,
     price: number | string,
   ): string | null {
     const numericPrice = Number(price);
