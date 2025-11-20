@@ -95,22 +95,29 @@ export class SnapshotBuilder {
     const selectedBuyPrices: number[] = [];
     const selectedSellPrices: number[] = [];
 
-    // BUY: 3 niveles centrados alrededor del centralBuy (si existe)
+    // BUY: 3 niveles alrededor del centralBuy (si existe), expandiendo hacia
+    // ambos lados antes de recurrir a fallback.
     if (buyPrices.length > 0) {
       if (centralBuyPrice != null) {
         const idx = buyPrices.findIndex((p) => p === centralBuyPrice);
 
         if (idx !== -1) {
-          // Tomar central y hasta 2 niveles inferiores (si existen)
-          const candidates: number[] = [];
-          if (idx - 2 >= 0) candidates.push(buyPrices[idx - 2]);
-          if (idx - 1 >= 0) candidates.push(buyPrices[idx - 1]);
-          candidates.push(buyPrices[idx]);
+          selectedBuyPrices.push(buyPrices[idx]);
 
-          // Asegurarse de no duplicar y mantener orden
-          for (const p of candidates) {
-            if (!selectedBuyPrices.includes(p)) {
-              selectedBuyPrices.push(p);
+          let left = idx - 1;
+          let right = idx + 1;
+
+          while (selectedBuyPrices.length < 3 && (left >= 0 || right < buyPrices.length)) {
+            if (left >= 0) {
+              selectedBuyPrices.push(buyPrices[left]);
+              left -= 1;
+            }
+
+            if (selectedBuyPrices.length >= 3) break;
+
+            if (right < buyPrices.length) {
+              selectedBuyPrices.push(buyPrices[right]);
+              right += 1;
             }
           }
         } else {
@@ -123,22 +130,29 @@ export class SnapshotBuilder {
       }
     }
 
-    // SELL: 3 niveles centrados alrededor del centralSell (si existe)
+    // SELL: 3 niveles alrededor del centralSell (si existe), expandiendo hacia
+    // ambos lados antes de recurrir a fallback.
     if (sellPrices.length > 0) {
       if (centralSellPrice != null) {
         const idx = sellPrices.findIndex((p) => p === centralSellPrice);
 
         if (idx !== -1) {
-          const candidates: number[] = [];
-          // central
-          candidates.push(sellPrices[idx]);
-          // +1 y +2 si existen
-          if (idx + 1 < sellPrices.length) candidates.push(sellPrices[idx + 1]);
-          if (idx + 2 < sellPrices.length) candidates.push(sellPrices[idx + 2]);
+          selectedSellPrices.push(sellPrices[idx]);
 
-          for (const p of candidates) {
-            if (!selectedSellPrices.includes(p)) {
-              selectedSellPrices.push(p);
+          let left = idx - 1;
+          let right = idx + 1;
+
+          while (selectedSellPrices.length < 3 && (left >= 0 || right < sellPrices.length)) {
+            if (left >= 0) {
+              selectedSellPrices.push(sellPrices[left]);
+              left -= 1;
+            }
+
+            if (selectedSellPrices.length >= 3) break;
+
+            if (right < sellPrices.length) {
+              selectedSellPrices.push(sellPrices[right]);
+              right += 1;
             }
           }
         } else {
