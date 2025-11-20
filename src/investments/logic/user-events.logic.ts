@@ -15,7 +15,7 @@ export class UserEventsLogic {
     private readonly stateUpdater: StateUpdaterLogic
   ) {}
 
-  handleUserExecutionReport(msg: any) {
+    async handleUserExecutionReport(msg: any) {
     const symbol = msg.s;
     const orderType = msg.o;
     const execType = msg.x;
@@ -27,6 +27,10 @@ export class UserEventsLogic {
 
     if (execType === 'NEW') {
       this.stateUpdater.maybeActivateToken(symbol);
+      const depth = await this.stateUpdater.fetchDepth(symbol);
+      console.log('[DEPTH GET]', depth);
+      this.stateUpdater.updateDepthState(symbol, depth);
+      this.stateUpdater.updateCentralState(symbol);
       return;
     }
 
