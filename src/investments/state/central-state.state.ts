@@ -66,14 +66,11 @@ export class CentralState {
   }
 
   clearToken(token: string): void {
-    this.centralState[token] = {
-      centralBuyPrice: null,
-      executedSinceBuyPriceChange: 0,
-
-      centralSellPrice: null,
-      executedSinceSellPriceChange: 0,
-    };
+    if (this.centralState[token]) {
+      delete this.centralState[token];
+    }
   }
+
 
   clearAll(): void {
     this.centralState = {};

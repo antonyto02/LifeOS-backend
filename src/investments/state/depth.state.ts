@@ -64,12 +64,10 @@ export class DepthState {
   // Limpia únicamente ese token (BUY y SELL quedan vacíos)
   clearToken(token: string): void {
     if (this.depthLevels[token]) {
-      this.depthLevels[token] = {
-        BUY: {},
-        SELL: {},
-      };
+      delete this.depthLevels[token];
     }
   }
+
 
   // Limpia toda la BD de depths
   clearAll(): void {

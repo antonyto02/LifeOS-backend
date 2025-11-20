@@ -56,12 +56,10 @@ export class ActiveOrdersState {
 
   clearToken(token: string): void {
     if (this.activeOrders[token]) {
-      this.activeOrders[token] = {
-        BUY: {},
-        SELL: {},
-      };
+      delete this.activeOrders[token];
     }
   }
+
 
   clearAll(): void {
     this.activeOrders = {};

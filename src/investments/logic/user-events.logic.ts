@@ -53,19 +53,29 @@ export class UserEventsLogic {
     }
 
     if (execType === 'CANCELED') {
-      this.activeTokens.remove(symbol);
+      const orderId = msg.i;
+      await this.stateUpdater.cancelOrder(orderId);
 
-      this.depthStream.closeDepthStream(symbol);
-      this.aggTradeStream.closeAggTradeStream(symbol);
-
+      this.snapshotGateway.broadcastSnapshot();
       return;
     }
+
+
 
     if (execType === 'TRADE' && orderStatus === 'PARTIALLY_FILLED') {
+      const orderId = msg.i;
+      const filledQty = parseFloat(msg.l);
+      this.stateUpdater.applyPartialFill(orderId, filledQty);
+      this.snapshotGateway.broadcastSnapshot();
+
       return;
     }
 
+
     if (execType === 'TRADE' && orderStatus === 'FILLED') {
+      const orderId = msg.i;
+      await this.stateUpdater.cancelOrder(orderId);
+      this.snapshotGateway.broadcastSnapshot();
       return;
     }
   }

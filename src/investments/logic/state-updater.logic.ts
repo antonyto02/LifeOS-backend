@@ -5,7 +5,7 @@ import { BinanceDepthStreamService } from '../stream/binance-depth-stream.servic
 import { BinanceAggTradeStreamService } from '../stream/binance-aggtrade-stream.service';
 import { DepthState } from '../state/depth.state';
 import { CentralState } from '../state/central-state.state';
-import { ActiveOrdersState } from '../state/active-orders.state';
+import { ActiveOrdersState, ActiveOrder } from '../state/active-orders.state';
 
 
 
@@ -76,51 +76,36 @@ export class StateUpdaterLogic {
   }
   updateDepthState(symbol: string, depth: DepthData): void {
     const { bids, asks } = depth;
-
-    // 1. Reiniciar la estructura del token (BUY y SELL vacíos)
     this.depthState.resetToken(symbol);
-
-    // 2. Objetos donde guardaremos los mapas finales
     const buyMap: Record<string, number> = {};
     const sellMap: Record<string, number> = {};
-
-    // 3. Ordenar bids de menor → mayor (como tú lo trabajas)
     const sortedBids = [...bids].sort((a, b) => a[0] - b[0]);
 
     for (const [price, qty] of sortedBids) {
       buyMap[price.toString()] = qty;
     }
 
-    // 4. Ordenar asks de menor → mayor
     const sortedAsks = [...asks].sort((a, b) => a[0] - b[0]);
 
     for (const [price, qty] of sortedAsks) {
       sellMap[price.toString()] = qty;
     }
-
-    // 5. Guardar snapshot completo
     this.depthState.setSnapshot(symbol, buyMap, sellMap);
   }
 updateCentralState(symbol: string): void {
-  // Obtener snapshot actual de depth
   const depth = this.depthState.getAll()[symbol];
-  if (!depth) return; // si no hay depth, no se hace nada
+  if (!depth) return;
 
   const buyLevels = Object.keys(depth.BUY).map(p => parseFloat(p));
   const sellLevels = Object.keys(depth.SELL).map(p => parseFloat(p));
 
   if (buyLevels.length === 0 || sellLevels.length === 0) {
-    // No se puede calcular central prices si falta un lado
     return;
   }
 
-  // BUY → precio más alto
   const centralBuy = Math.max(...buyLevels);
-
-  // SELL → precio más bajo
   const centralSell = Math.min(...sellLevels);
 
-  // Actualizar central state (solo si cambió)
   this.centralState.updateCentralBuyPrice(symbol, centralBuy);
   this.centralState.updateCentralSellPrice(symbol, centralSell);
 }
@@ -136,8 +121,6 @@ createOrUpdateOrder(
 
 
   const priceKey = price.toString();
-
-  // 1. Buscar profundidad del precio exacto (precio del usuario)
   let marketDepthAtPrice = 0;
 
   if (side === 'BUY') {
@@ -148,10 +131,7 @@ createOrUpdateOrder(
     marketDepthAtPrice = level ? level[1] : 0;
   }
 
-  // 2. Calcular queue_position
   const queuePos = Math.max(marketDepthAtPrice - qty, 0);
-
-  // 3. Crear la orden completa con los 7 atributos
   const order = {
     id: orderId,
     pending_amount: qty,
@@ -162,10 +142,118 @@ createOrUpdateOrder(
     side,
     price,
   };
-
-  // 4. Insertar la orden en ActiveOrdersState
   this.activeOrders.setOrder(symbol, side, priceKey, order);
 }
+
+findOrderById(orderId: number): {
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  price: string;
+  order: ActiveOrder;
+} | null {
+
+  const all = this.activeOrders.getAll();
+
+  for (const symbol of Object.keys(all)) {
+    const sides = all[symbol];
+
+    for (const side of ['BUY', 'SELL'] as const) {
+      const ordersAtSide = sides[side];
+
+      for (const price of Object.keys(ordersAtSide)) {
+        const order = ordersAtSide[price];
+
+        if (order.id === orderId) {
+          return {
+            symbol,
+            side,
+            price,
+            order,
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+async cancelOrder(orderId: number): Promise<void> {
+  const found = this.findOrderById(orderId);
+
+  if (!found) {
+    console.warn(`[cancelOrder] Orden ${orderId} no encontrada`);
+    return;
+  }
+
+  const { symbol, side, price } = found;
+
+  // 1. Eliminar la orden puntual
+  this.activeOrders.deleteOrder(symbol, side, price);
+  console.log(`[cancelOrder] Orden ${orderId} eliminada de ${symbol} ${side} @ ${price}`);
+
+  // 2. Verificar si siguen existiendo órdenes en ese mismo precio
+  const remainingAtPrice = this.activeOrders.getOrder(symbol, side, price);
+
+  if (!remainingAtPrice) {
+    console.log(`[cancelOrder] No quedan órdenes en el precio ${price}, limpiando price-key...`);
+    this.activeOrders.deleteOrder(symbol, side, price);
+  }
+
+  // 3. Revisar si el token sigue teniendo órdenes
+  const tokenOrders = this.activeOrders.getAll()[symbol];
+  const hasAnyBuy = tokenOrders?.BUY && Object.keys(tokenOrders.BUY).length > 0;
+  const hasAnySell = tokenOrders?.SELL && Object.keys(tokenOrders.SELL).length > 0;
+
+  const stillHasOrders = hasAnyBuy || hasAnySell;
+
+  // 4. Si YA NO QUEDAN ÓRDENES → limpiar todo completamente
+  if (!stillHasOrders) {
+    console.log(`[cancelOrder] Ya no existen órdenes en ${symbol}. Limpiando estado completo.`);
+    this.activeTokens.remove(symbol);
+    this.depthState.clearToken(symbol);
+    this.centralState.clearToken(symbol);
+    this.activeOrders.clearToken(symbol);
+    this.depthStream.closeDepthStream(symbol);
+    this.aggTradeStream.closeAggTradeStream(symbol);
+
+    return; 
+  }
+
+  // 5. SI TODAVÍA QUEDAN ÓRDENES → actualizar depth + central state
+  const depth = await this.fetchDepth(symbol);
+  this.updateDepthState(symbol, depth);
+  this.updateCentralState(symbol);
+
+  return;
+}
+
+
+applyPartialFill(orderId: number, filledQty: number): void {
+  const found = this.findOrderById(orderId);
+
+  if (!found) {
+    console.warn(`[applyPartialFill] Orden ${orderId} no encontrada`);
+    return;
+  }
+
+  const { symbol, side, price, order } = found;
+
+  // No permitir que se pase del máximo
+  const newFilled = order.filled_amount + filledQty;
+  const remaining = Math.max(order.pending_amount - filledQty, 0);
+
+  order.filled_amount = newFilled;
+  order.pending_amount = remaining;
+
+  // Actualizamos la orden
+  this.activeOrders.setOrder(symbol, side, price, order);
+
+  console.log(
+    `[applyPartialFill] Orden ${orderId} actualizada → filled=${newFilled}, pending=${remaining}`
+  );
+}
+
 
 
 
