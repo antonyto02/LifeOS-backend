@@ -5,6 +5,8 @@ import { BinanceDepthStreamService } from './stream/binance-depth-stream.service
 import { BinanceAggTradeStreamService } from './stream/binance-aggtrade-stream.service';
 import { DepthState } from './state/depth.state';
 import { CentralState } from './state/central-state.state';import { ActiveOrdersState } from './state/active-orders.state';
+import { SnapshotBuilder } from './snapshot/snapshot.builder';
+
 
 
 
@@ -18,7 +20,8 @@ export class InvestmentsController {
     private readonly aggTradeStream: BinanceAggTradeStreamService,
     private readonly depthState: DepthState,
     private readonly centralState: CentralState,
-    private readonly activeOrders: ActiveOrdersState
+    private readonly activeOrders: ActiveOrdersState,
+    private readonly snapshotBuilder: SnapshotBuilder
 
   ) {}
 
@@ -52,6 +55,11 @@ export class InvestmentsController {
   @Get('orders')
   getOrders() {
     return this.activeOrders.getAll();
-}
+  }
+  @Get('snapshot')
+  getSnapshot() {
+    return this.snapshotBuilder.buildFullSnapshot();
+  }
+
 
 }

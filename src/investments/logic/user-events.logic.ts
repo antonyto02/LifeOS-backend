@@ -4,6 +4,9 @@ import { ActiveTokensState } from '../state/active-tokens.state';
 import { BinanceDepthStreamService } from '../stream/binance-depth-stream.service';
 import { BinanceAggTradeStreamService } from '../stream/binance-aggtrade-stream.service';
 import { StateUpdaterLogic } from './state-updater.logic';
+import { SnapshotGateway } from '../snapshot/snapshot.gateway';
+
+
 
 @Injectable()
 export class UserEventsLogic {
@@ -12,7 +15,9 @@ export class UserEventsLogic {
     private readonly activeTokens: ActiveTokensState,
     private readonly depthStream: BinanceDepthStreamService,
     private readonly aggTradeStream: BinanceAggTradeStreamService,
-    private readonly stateUpdater: StateUpdaterLogic
+    private readonly stateUpdater: StateUpdaterLogic,
+    private readonly snapshotGateway: SnapshotGateway
+
   ) {}
 
     async handleUserExecutionReport(msg: any) {
@@ -43,6 +48,7 @@ export class UserEventsLogic {
         depth,
         orderId
       );
+      this.snapshotGateway.broadcastSnapshot();
       return;
     }
 
