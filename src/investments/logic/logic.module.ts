@@ -5,6 +5,7 @@ import { StateModule } from '../state/state.module';
 import { StreamModule } from '../stream/stream.module';
 import { SnapshotBuilder } from '../snapshot/snapshot.builder';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
+import { DepthEventsLogic } from './depth-events.logic';
 
 @Module({
   imports: [
@@ -14,12 +15,14 @@ import { SnapshotGateway } from '../snapshot/snapshot.gateway';
   providers: [
     UserEventsLogic,
     StateUpdaterLogic,
+    DepthEventsLogic,
     SnapshotBuilder,
     SnapshotGateway,
   ],
   exports: [
     UserEventsLogic,
     StateUpdaterLogic,
+    DepthEventsLogic,
     SnapshotBuilder,
     SnapshotGateway,
   ],

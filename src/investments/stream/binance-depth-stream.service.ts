@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import WebSocket from 'ws';
 import { DepthEventsLogic } from '../logic/depth-events.logic';
 
@@ -6,7 +6,10 @@ import { DepthEventsLogic } from '../logic/depth-events.logic';
 export class BinanceDepthStreamService {
   private depthConnections: Record<string, WebSocket> = {};
 
-  constructor(private readonly depthEventsLogic: DepthEventsLogic) {}
+  constructor(
+    @Inject(forwardRef(() => DepthEventsLogic))
+    private readonly depthEventsLogic: DepthEventsLogic,
+  ) {}
 
   getOpenConnections(): string[] {
     return Object.keys(this.depthConnections);

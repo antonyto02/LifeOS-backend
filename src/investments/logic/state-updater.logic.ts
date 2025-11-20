@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import fetch from 'node-fetch';
 import { ActiveTokensState } from '../state/active-tokens.state';
 import { BinanceDepthStreamService } from '../stream/binance-depth-stream.service';
@@ -18,6 +18,7 @@ export interface DepthData {
 export class StateUpdaterLogic {
   constructor(
     private readonly activeTokens: ActiveTokensState,
+    @Inject(forwardRef(() => BinanceDepthStreamService))
     private readonly depthStream: BinanceDepthStreamService,
     private readonly aggTradeStream: BinanceAggTradeStreamService,
     private readonly depthState: DepthState,
