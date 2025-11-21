@@ -1,7 +1,8 @@
 import { DepthState } from '../../state/depth.state';
 
-type CollisionSnapshot = {
+export type CollisionSnapshot = {
   bidPrice: number;
+  secondBidPrice?: number;
   askPrice: number;
   topBid: number;
   topAsk: number;
@@ -30,12 +31,20 @@ export function computeCollision(symbol: string): CollisionSnapshot | undefined 
     return;
   }
 
-  const [bidPrice, bidDepth] = buyEntries.reduce((max, current) => {
-    const currentPrice = parseFloat(current[0]);
-    const maxPrice = parseFloat(max[0]);
+  const sortedBuyEntries = buyEntries
+    .map(([price, depth]) => [parseFloat(price), depth] as [number, number])
+    .sort((a, b) => b[0] - a[0]);
 
-    return currentPrice > maxPrice ? current : max;
-  });
+  const topBidEntry = sortedBuyEntries[0];
+  const secondBidEntry = sortedBuyEntries[1];
+
+  if (!topBidEntry) {
+    console.log(`[computeCollision] Missing BUY levels for ${symbol}`);
+    return;
+  }
+
+  const [bidPrice, bidDepth] = topBidEntry;
+  const secondBidPrice = secondBidEntry ? secondBidEntry[0] : undefined;
 
   const [askPrice, askDepth] = sellEntries.reduce((min, current) => {
     const currentPrice = parseFloat(current[0]);
@@ -56,6 +65,7 @@ export function computeCollision(symbol: string): CollisionSnapshot | undefined 
 
   return {
     bidPrice: parseFloat(bidPrice),
+    secondBidPrice,
     askPrice: parseFloat(askPrice),
     topBid,
     topAsk,
