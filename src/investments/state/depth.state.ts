@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class DepthState {
+  private static instance: DepthState | null = null;
+
   // Estructura base:
   // {
   //   "ACAUSDT": {
@@ -16,6 +18,14 @@ export class DepthState {
       SELL: Record<string, number>;
     }
   > = {};
+
+  constructor() {
+    DepthState.instance = this;
+  }
+
+  static getInstance(): DepthState | null {
+    return DepthState.instance;
+  }
 
   // Retorna todo el estado
   getAll() {

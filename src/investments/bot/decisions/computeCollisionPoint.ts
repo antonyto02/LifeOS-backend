@@ -1,6 +1,13 @@
 import { DepthState } from '../../state/depth.state';
 
-export function computeCollision(depthState: DepthState, symbol: string): void {
+export function computeCollision(symbol: string): void {
+  const depthState = DepthState.getInstance();
+
+  if (!depthState) {
+    console.log('[computeCollision] DepthState no inicializado');
+    return;
+  }
+
   const depthLevels = depthState.getAll()[symbol];
 
   if (!depthLevels) {
