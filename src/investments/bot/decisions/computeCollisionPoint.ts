@@ -1,6 +1,13 @@
 import { DepthState } from '../../state/depth.state';
 
-export function computeCollision(symbol: string): void {
+type CollisionSnapshot = {
+  bidPrice: number;
+  askPrice: number;
+  topBid: number;
+  topAsk: number;
+};
+
+export function computeCollision(symbol: string): CollisionSnapshot | undefined {
   const depthState = DepthState.getInstance();
 
   if (!depthState) {
@@ -47,8 +54,10 @@ export function computeCollision(symbol: string): void {
   const topBid = bidDepth / depthSum;
   const topAsk = askDepth / depthSum;
 
-  console.log(`El precio de compra mas alto es ${bidPrice}`);
-  console.log(`El precio de venta mas bajo es ${askPrice}`);
-  console.log(`El porcentaje de compradores es ${topBid}`);
-  console.log(`El porcentaje de vendedores es ${topAsk}`);
+  return {
+    bidPrice: parseFloat(bidPrice),
+    askPrice: parseFloat(askPrice),
+    topBid,
+    topAsk,
+  };
 }
