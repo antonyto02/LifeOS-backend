@@ -64,7 +64,7 @@ export function computeCollision(symbol: string): CollisionSnapshot | undefined 
   const topAsk = askDepth / depthSum;
 
   return {
-    bidPrice: parseFloat(bidPrice),
+    bidPrice,
     secondBidPrice,
     askPrice: parseFloat(askPrice),
     topBid,
