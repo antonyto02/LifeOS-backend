@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
 import { ActiveOrdersState } from '../state/active-orders.state';
 import { CentralState } from '../state/central-state.state';
@@ -11,6 +11,7 @@ export class AggTradeEventsLogic {
     private readonly activeOrders: ActiveOrdersState,
     private readonly centralState: CentralState,
     private readonly snapshotGateway: SnapshotGateway,
+    @Inject(forwardRef(() => StateUpdaterLogic))
     private readonly stateUpdater: StateUpdaterLogic,
   ) {}
 
