@@ -327,8 +327,8 @@ export class StateUpdaterLogic {
       console.log(`[AggTrade][queue] No hay órdenes activas para ${symbol}`);
       return;
     }
-
-    const side: 'BUY' | 'SELL' = isMaker ? 'SELL' : 'BUY';
+    
+    const side: 'BUY' | 'SELL' = isMaker ? 'BUY' : 'SELL';
     const priceKey = price.toString();
     const orderAtPrice = tokenOrders[side]?.[priceKey];
 
