@@ -2,12 +2,14 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { StateUpdaterLogic } from './state-updater.logic';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
 import { handleMarketEvent } from '../bot/decisions/handleMarketEvent';
+import { DepthState } from '../state/depth.state';
 
 @Injectable()
 export class DepthEventsLogic {
   constructor(
     @Inject(forwardRef(() => StateUpdaterLogic))
     private readonly stateUpdater: StateUpdaterLogic,
+    private readonly depthState: DepthState,
     private readonly snapshotGateway: SnapshotGateway,
   ) {}
 
@@ -32,9 +34,10 @@ export class DepthEventsLogic {
     this.stateUpdater.updateCentralState(symbol);
 
     console.log('Memoria RAM actulizada');
-    handleMarketEvent();
+    handleMarketEvent(this.depthState, symbol);
 
     // 👉 Avisar al frontend
     this.snapshotGateway.broadcastSnapshot();
+    console.log('Datos enviados al frontend');
   }
 }

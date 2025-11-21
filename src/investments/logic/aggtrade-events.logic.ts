@@ -3,6 +3,7 @@ import { SnapshotGateway } from '../snapshot/snapshot.gateway';
 import { ActiveOrdersState } from '../state/active-orders.state';
 import { CentralState } from '../state/central-state.state';
 import { handleMarketEvent } from '../bot/decisions/handleMarketEvent';
+import { DepthState } from '../state/depth.state';
 import { StateUpdaterLogic } from './state-updater.logic';
 
 
@@ -11,6 +12,7 @@ export class AggTradeEventsLogic {
   constructor(
     private readonly activeOrders: ActiveOrdersState,
     private readonly centralState: CentralState,
+    private readonly depthState: DepthState,
     private readonly snapshotGateway: SnapshotGateway,
     @Inject(forwardRef(() => StateUpdaterLogic))
     private readonly stateUpdater: StateUpdaterLogic,
@@ -40,12 +42,13 @@ export class AggTradeEventsLogic {
     this.stateUpdater.updateCentralStateFromAggTrade(symbol, price, qty, isMaker);
 
     console.log('Memoria RAM actulizada');
-    handleMarketEvent();
+    handleMarketEvent(this.depthState, symbol);
 
     // ----------------------------------------------------------------------------------------------------------------
 
     // Por ahora únicamente avisamos al frontend para que se entere del trade
     this.snapshotGateway.broadcastSnapshot();
+    console.log('Datos enviados al frontend');
   }
 
   // ⭐ Se crearán luego:
