@@ -257,9 +257,12 @@ applyPartialFill(orderId: number, filledQty: number): void {
 
 applyDelta(
   symbol: string,
-  bids: Array<[number, number]>,
-  asks: Array<[number, number]>
+  bids: Array<[string | number, string | number]>,
+  asks: Array<[string | number, string | number]>
 ): void {
+  const normalizePrice = (price: string | number): string =>
+    parseFloat(price as string).toString();
+  const toNumber = (value: string | number): number => parseFloat(value as string);
 
   // Asegurar que exista el contenedor en depthState
   if (!this.depthState.getAll()[symbol]) {
@@ -270,29 +273,47 @@ applyDelta(
   const buyLevels = current.BUY;
   const sellLevels = current.SELL;
 
-  // 👉 Actualizar BIDS
-  for (const [price, qty] of bids) {
-    const key = price.toString();
+  const normalizedBids: Array<[number, number]> = [];
+  const normalizedAsks: Array<[number, number]> = [];
 
-    if (qty === 0) {
-      delete buyLevels[key];
-    } else {
-      buyLevels[key] = qty;
+  const applySide = (
+    updates: Array<[string | number, string | number]>,
+    levels: Record<string, number>,
+    normalized: Array<[number, number]>,
+    side: 'BUY' | 'SELL'
+  ): void => {
+    for (const [rawPrice, rawQty] of updates) {
+      const key = normalizePrice(rawPrice);
+      const qty = toNumber(rawQty);
+
+      if (Number.isNaN(qty)) continue;
+
+      const previous = levels[key];
+
+      if (qty === 0) {
+        if (previous !== undefined) {
+          delete levels[key];
+          console.log(
+            `[DEPTH] ${symbol} ${side} precio:${key} eliminado (antes ${previous})`
+          );
+        }
+      } else {
+        levels[key] = qty;
+        if (previous !== qty) {
+          console.log(
+            `[DEPTH] ${symbol} ${side} precio:${key} cambiado de ${previous ?? 0} a ${qty}`
+          );
+        }
+      }
+
+      normalized.push([parseFloat(key), qty]);
     }
-  }
+  };
 
-  // 👉 Actualizar ASKS
-  for (const [price, qty] of asks) {
-    const key = price.toString();
+  applySide(bids, buyLevels, normalizedBids, 'BUY');
+  applySide(asks, sellLevels, normalizedAsks, 'SELL');
 
-    if (qty === 0) {
-      delete sellLevels[key];
-    } else {
-      sellLevels[key] = qty;
-    }
-  }
-  this.updateQueuePositionsAfterDepthDelta(symbol, bids, asks);
-
+  this.updateQueuePositionsAfterDepthDelta(symbol, normalizedBids, normalizedAsks);
 }
 
 private updateQueuePositionsAfterDepthDelta(
