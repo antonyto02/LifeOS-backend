@@ -1,6 +1,7 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { StateUpdaterLogic } from './state-updater.logic';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
+import { handleMarketEvent } from '../bot/decisions/handleMarketEvent';
 
 @Injectable()
 export class DepthEventsLogic {
@@ -32,5 +33,8 @@ export class DepthEventsLogic {
 
     // 👉 Avisar al frontend
     this.snapshotGateway.broadcastSnapshot();
+
+    console.log('Memoria RAM actulizada');
+    handleMarketEvent();
   }
 }

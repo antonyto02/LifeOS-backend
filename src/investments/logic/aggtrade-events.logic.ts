@@ -2,6 +2,7 @@ import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
 import { ActiveOrdersState } from '../state/active-orders.state';
 import { CentralState } from '../state/central-state.state';
+import { handleMarketEvent } from '../bot/decisions/handleMarketEvent';
 import { StateUpdaterLogic } from './state-updater.logic';
 
 
@@ -42,6 +43,9 @@ export class AggTradeEventsLogic {
 
     // Por ahora únicamente avisamos al frontend para que se entere del trade
     this.snapshotGateway.broadcastSnapshot();
+
+    console.log('Memoria RAM actulizada');
+    handleMarketEvent();
   }
 
   // ⭐ Se crearán luego:
