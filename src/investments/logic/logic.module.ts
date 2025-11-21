@@ -6,6 +6,7 @@ import { StreamModule } from '../stream/stream.module';
 import { SnapshotBuilder } from '../snapshot/snapshot.builder';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
 import { DepthEventsLogic } from './depth-events.logic';
+import { AggTradeEventsLogic } from './aggtrade-events.logic';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { DepthEventsLogic } from './depth-events.logic';
     DepthEventsLogic,
     SnapshotBuilder,
     SnapshotGateway,
+    AggTradeEventsLogic
   ],
   exports: [
     UserEventsLogic,
@@ -25,6 +27,7 @@ import { DepthEventsLogic } from './depth-events.logic';
     DepthEventsLogic,
     SnapshotBuilder,
     SnapshotGateway,
+    AggTradeEventsLogic
   ],
 })
 export class LogicModule {}
