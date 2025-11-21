@@ -8,7 +8,7 @@ export function handleMarketEvent(symbol: string) {
     return;
   }
 
-  evaluateBuyOrders(collisionSnapshot);
+  evaluateBuyOrders(symbol, collisionSnapshot);
 
   return collisionSnapshot;
 }

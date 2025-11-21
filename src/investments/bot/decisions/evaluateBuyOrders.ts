@@ -1,17 +1,15 @@
+import { ActiveOrdersState } from '../../state/active-orders.state';
 import { CollisionSnapshot } from './computeCollisionPoint';
 
-export function evaluateBuyOrders(snapshot: CollisionSnapshot) {
-  const { bidPrice, secondBidPrice, askPrice, topBid, topAsk } = snapshot;
+export function evaluateBuyOrders(symbol: string, _snapshot: CollisionSnapshot) {
+  const activeOrdersState = ActiveOrdersState.getInstance();
 
-  console.log(`El precio de compra más alto es ${bidPrice}`);
-
-  if (secondBidPrice !== undefined) {
-    console.log(`El segundo precio de compra más alto es ${secondBidPrice}`);
-  } else {
-    console.log('No hay un segundo precio de compra disponible');
+  if (!activeOrdersState) {
+    console.log('[evaluateBuyOrders] ActiveOrdersState no inicializado');
+    return;
   }
 
-  console.log(`El precio de venta más bajo es ${askPrice}`);
-  console.log(`El porcentaje de compradores es ${topBid}`);
-  console.log(`El porcentaje de vendedores es ${topAsk}`);
+  const buyOrders = activeOrdersState.getAll()[symbol]?.BUY ?? {};
+
+  console.log('Órdenes de compra activas:', buyOrders);
 }

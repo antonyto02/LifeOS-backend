@@ -13,6 +13,8 @@ export interface ActiveOrder {
 @Injectable()
 export class ActiveOrdersState {
 
+  private static instance: ActiveOrdersState | null = null;
+
   private activeOrders: Record<
     string,
     {
@@ -20,6 +22,14 @@ export class ActiveOrdersState {
       SELL: Record<string, ActiveOrder>;
     }
   > = {};
+
+  constructor() {
+    ActiveOrdersState.instance = this;
+  }
+
+  static getInstance(): ActiveOrdersState | null {
+    return ActiveOrdersState.instance;
+  }
 
   getAll() {
     return this.activeOrders;
