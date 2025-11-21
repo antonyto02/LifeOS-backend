@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
-import { ActiveOrdersState } from '../state/active-orders.state';
-import { CentralState } from '../state/central-state.state';
+import { StateUpdaterLogic } from './state-updater.logic';
 
 @Injectable()
 export class AggTradeEventsLogic {
   constructor(
-    private readonly activeOrders: ActiveOrdersState,
-    private readonly centralState: CentralState,
+    private readonly stateUpdater: StateUpdaterLogic,
     private readonly snapshotGateway: SnapshotGateway,
   ) {}
 
@@ -31,19 +29,16 @@ export class AggTradeEventsLogic {
 
     // ----------------------------------------------------------------------------------------------------------------
     // 1) ⭐ FUTURO: aquí vamos a actualizar el queue del usuario si tiene ordenes en este precio
-    // this.updateUserQueuePosition(symbol, price, qty);
+    this.stateUpdater.updateUserQueuePosition(symbol, price, qty, isMaker);
     // ----------------------------------------------------------------------------------------------------------------
 
     // ----------------------------------------------------------------------------------------------------------------
     // 2) ⭐ FUTURO: aquí vamos a actualizar el central state basado en trades reales
-    // this.updateCentralStateFromAggTrade(symbol, price, qty, isMaker);
+    this.stateUpdater.updateCentralStateFromAggTrade(symbol, price, qty, isMaker);
     // ----------------------------------------------------------------------------------------------------------------
 
     // Por ahora únicamente avisamos al frontend para que se entere del trade
     this.snapshotGateway.broadcastSnapshot();
   }
 
-  // ⭐ Se crearán luego:
-  // private updateUserQueuePosition(symbol: string, price: number, qty: number) {}
-  // private updateCentralStateFromAggTrade(symbol: string, price: number, qty: number, isMaker: boolean) {}
 }

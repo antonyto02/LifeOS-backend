@@ -93,276 +93,330 @@ export class StateUpdaterLogic {
     }
     this.depthState.setSnapshot(symbol, buyMap, sellMap);
   }
-updateCentralState(symbol: string): void {
-  const depth = this.depthState.getAll()[symbol];
-  if (!depth) return;
 
-  const buyLevels = Object.keys(depth.BUY).map(p => parseFloat(p));
-  const sellLevels = Object.keys(depth.SELL).map(p => parseFloat(p));
+  updateCentralState(symbol: string): void {
+    const depth = this.depthState.getAll()[symbol];
+    if (!depth) return;
 
-  if (buyLevels.length === 0 || sellLevels.length === 0) {
-    return;
+    const buyLevels = Object.keys(depth.BUY).map((p) => parseFloat(p));
+    const sellLevels = Object.keys(depth.SELL).map((p) => parseFloat(p));
+
+    if (buyLevels.length === 0 || sellLevels.length === 0) {
+      return;
+    }
+
+    const centralBuy = Math.max(...buyLevels);
+    const centralSell = Math.min(...sellLevels);
+
+    this.centralState.updateCentralBuyPrice(symbol, centralBuy);
+    this.centralState.updateCentralSellPrice(symbol, centralSell);
   }
 
-  const centralBuy = Math.max(...buyLevels);
-  const centralSell = Math.min(...sellLevels);
+  createOrUpdateOrder(
+    symbol: string,
+    side: 'BUY' | 'SELL',
+    price: number,
+    qty: number,
+    depth: DepthData,
+    orderId: number,
+  ): void {
+    const priceKey = price.toString();
+    let marketDepthAtPrice = 0;
 
-  this.centralState.updateCentralBuyPrice(symbol, centralBuy);
-  this.centralState.updateCentralSellPrice(symbol, centralSell);
-}
+    if (side === 'BUY') {
+      const level = depth.bids.find(([p]) => p === price);
+      marketDepthAtPrice = level ? level[1] : 0;
+    } else {
+      const level = depth.asks.find(([p]) => p === price);
+      marketDepthAtPrice = level ? level[1] : 0;
+    }
 
-createOrUpdateOrder(
-  symbol: string,
-  side: 'BUY' | 'SELL',
-  price: number,
-  qty: number,
-  depth: DepthData,
-  orderId: number
-): void {
+    const queuePos = Math.max(marketDepthAtPrice - qty, 0);
+    const order = {
+      id: orderId,
+      pending_amount: qty,
+      queue_position: queuePos,
+      filled_amount: 0,
 
-
-  const priceKey = price.toString();
-  let marketDepthAtPrice = 0;
-
-  if (side === 'BUY') {
-    const level = depth.bids.find(([p]) => p === price);
-    marketDepthAtPrice = level ? level[1] : 0;
-  } else {
-    const level = depth.asks.find(([p]) => p === price);
-    marketDepthAtPrice = level ? level[1] : 0;
+      token: symbol,
+      side,
+      price,
+    };
+    this.activeOrders.setOrder(symbol, side, priceKey, order);
   }
 
-  const queuePos = Math.max(marketDepthAtPrice - qty, 0);
-  const order = {
-    id: orderId,
-    pending_amount: qty,
-    queue_position: queuePos,
-    filled_amount: 0,
+  findOrderById(orderId: number): {
+    symbol: string;
+    side: 'BUY' | 'SELL';
+    price: string;
+    order: ActiveOrder;
+  } | null {
+    const all = this.activeOrders.getAll();
 
-    token: symbol,
-    side,
-    price,
-  };
-  this.activeOrders.setOrder(symbol, side, priceKey, order);
-}
+    for (const symbol of Object.keys(all)) {
+      const sides = all[symbol];
 
-findOrderById(orderId: number): {
-  symbol: string;
-  side: 'BUY' | 'SELL';
-  price: string;
-  order: ActiveOrder;
-} | null {
+      for (const side of ['BUY', 'SELL'] as const) {
+        const ordersAtSide = sides[side];
 
-  const all = this.activeOrders.getAll();
+        for (const price of Object.keys(ordersAtSide)) {
+          const order = ordersAtSide[price];
 
-  for (const symbol of Object.keys(all)) {
-    const sides = all[symbol];
-
-    for (const side of ['BUY', 'SELL'] as const) {
-      const ordersAtSide = sides[side];
-
-      for (const price of Object.keys(ordersAtSide)) {
-        const order = ordersAtSide[price];
-
-        if (order.id === orderId) {
-          return {
-            symbol,
-            side,
-            price,
-            order,
-          };
+          if (order.id === orderId) {
+            return {
+              symbol,
+              side,
+              price,
+              order,
+            };
+          }
         }
       }
     }
+
+    return null;
   }
 
-  return null;
-}
+  async cancelOrder(orderId: number): Promise<void> {
+    const found = this.findOrderById(orderId);
 
-async cancelOrder(orderId: number): Promise<void> {
-  const found = this.findOrderById(orderId);
+    if (!found) {
+      console.warn(`[cancelOrder] Orden ${orderId} no encontrada`);
+      return;
+    }
 
-  if (!found) {
-    console.warn(`[cancelOrder] Orden ${orderId} no encontrada`);
-    return;
-  }
+    const { symbol, side, price } = found;
 
-  const { symbol, side, price } = found;
-
-  // 1. Eliminar la orden puntual
-  this.activeOrders.deleteOrder(symbol, side, price);
-  console.log(`[cancelOrder] Orden ${orderId} eliminada de ${symbol} ${side} @ ${price}`);
-
-  // 2. Verificar si siguen existiendo órdenes en ese mismo precio
-  const remainingAtPrice = this.activeOrders.getOrder(symbol, side, price);
-
-  if (!remainingAtPrice) {
-    console.log(`[cancelOrder] No quedan órdenes en el precio ${price}, limpiando price-key...`);
+    // 1. Eliminar la orden puntual
     this.activeOrders.deleteOrder(symbol, side, price);
-  }
+    console.log(`[cancelOrder] Orden ${orderId} eliminada de ${symbol} ${side} @ ${price}`);
 
-  // 3. Revisar si el token sigue teniendo órdenes
-  const tokenOrders = this.activeOrders.getAll()[symbol];
-  const hasAnyBuy = tokenOrders?.BUY && Object.keys(tokenOrders.BUY).length > 0;
-  const hasAnySell = tokenOrders?.SELL && Object.keys(tokenOrders.SELL).length > 0;
+    // 2. Verificar si siguen existiendo órdenes en ese mismo precio
+    const remainingAtPrice = this.activeOrders.getOrder(symbol, side, price);
 
-  const stillHasOrders = hasAnyBuy || hasAnySell;
+    if (!remainingAtPrice) {
+      console.log(`[cancelOrder] No quedan órdenes en el precio ${price}, limpiando price-key...`);
+      this.activeOrders.deleteOrder(symbol, side, price);
+    }
 
-  // 4. Si YA NO QUEDAN ÓRDENES → limpiar todo completamente
-  if (!stillHasOrders) {
-    console.log(`[cancelOrder] Ya no existen órdenes en ${symbol}. Limpiando estado completo.`);
-    this.activeTokens.remove(symbol);
-    this.depthState.clearToken(symbol);
-    this.centralState.clearToken(symbol);
-    this.activeOrders.clearToken(symbol);
-    this.depthStream.closeDepthStream(symbol);
-    this.aggTradeStream.closeAggTradeStream(symbol);
+    // 3. Revisar si el token sigue teniendo órdenes
+    const tokenOrders = this.activeOrders.getAll()[symbol];
+    const hasAnyBuy = tokenOrders?.BUY && Object.keys(tokenOrders.BUY).length > 0;
+    const hasAnySell = tokenOrders?.SELL && Object.keys(tokenOrders.SELL).length > 0;
 
-    return; 
-  }
+    const stillHasOrders = hasAnyBuy || hasAnySell;
 
-  // 5. SI TODAVÍA QUEDAN ÓRDENES → actualizar depth + central state
-  const depth = await this.fetchDepth(symbol);
-  this.updateDepthState(symbol, depth);
-  this.updateCentralState(symbol);
+    // 4. Si YA NO QUEDAN ÓRDENES → limpiar todo completamente
+    if (!stillHasOrders) {
+      console.log(`[cancelOrder] Ya no existen órdenes en ${symbol}. Limpiando estado completo.`);
+      this.activeTokens.remove(symbol);
+      this.depthState.clearToken(symbol);
+      this.centralState.clearToken(symbol);
+      this.activeOrders.clearToken(symbol);
+      this.depthStream.closeDepthStream(symbol);
+      this.aggTradeStream.closeAggTradeStream(symbol);
 
-  return;
-}
+      return;
+    }
 
+    // 5. SI TODAVÍA QUEDAN ÓRDENES → actualizar depth + central state
+    const depth = await this.fetchDepth(symbol);
+    this.updateDepthState(symbol, depth);
+    this.updateCentralState(symbol);
 
-applyPartialFill(orderId: number, filledQty: number): void {
-  const found = this.findOrderById(orderId);
-
-  if (!found) {
-    console.warn(`[applyPartialFill] Orden ${orderId} no encontrada`);
     return;
   }
 
-  const { symbol, side, price, order } = found;
 
-  // No permitir que se pase del máximo
-  const newFilled = order.filled_amount + filledQty;
-  const remaining = Math.max(order.pending_amount - filledQty, 0);
+  applyPartialFill(orderId: number, filledQty: number): void {
+    const found = this.findOrderById(orderId);
 
-  order.filled_amount = newFilled;
-  order.pending_amount = remaining;
+    if (!found) {
+      console.warn(`[applyPartialFill] Orden ${orderId} no encontrada`);
+      return;
+    }
 
-  // Actualizamos la orden
-  this.activeOrders.setOrder(symbol, side, price, order);
+    const { symbol, side, price, order } = found;
 
-  console.log(
-    `[applyPartialFill] Orden ${orderId} actualizada → filled=${newFilled}, pending=${remaining}`
-  );
-}
+    // No permitir que se pase del máximo
+    const newFilled = order.filled_amount + filledQty;
+    const remaining = Math.max(order.pending_amount - filledQty, 0);
 
-applyDelta(
-  symbol: string,
-  bids: Array<[string | number, string | number]>,
-  asks: Array<[string | number, string | number]>
-): void {
-  const normalizePrice = (price: string | number): string =>
-    parseFloat(price as string).toString();
-  const toNumber = (value: string | number): number => parseFloat(value as string);
+    order.filled_amount = newFilled;
+    order.pending_amount = remaining;
 
-  // Asegurar que exista el contenedor en depthState
-  if (!this.depthState.getAll()[symbol]) {
-    this.depthState.setSnapshot(symbol, {}, {});
+    // Actualizamos la orden
+    this.activeOrders.setOrder(symbol, side, price, order);
+
+    console.log(
+      `[applyPartialFill] Orden ${orderId} actualizada → filled=${newFilled}, pending=${remaining}`,
+    );
   }
 
-  const current = this.depthState.getAll()[symbol];
-  const buyLevels = current.BUY;
-  const sellLevels = current.SELL;
+  applyDelta(
+    symbol: string,
+    bids: Array<[string | number, string | number]>,
+    asks: Array<[string | number, string | number]>,
+  ): void {
+    const normalizePrice = (price: string | number): string =>
+      parseFloat(price as string).toString();
+    const toNumber = (value: string | number): number => parseFloat(value as string);
 
-  const normalizedBids: Array<[number, number]> = [];
-  const normalizedAsks: Array<[number, number]> = [];
+    // Asegurar que exista el contenedor en depthState
+    if (!this.depthState.getAll()[symbol]) {
+      this.depthState.setSnapshot(symbol, {}, {});
+    }
 
-  const applySide = (
-    updates: Array<[string | number, string | number]>,
-    levels: Record<string, number>,
-    normalized: Array<[number, number]>,
-    side: 'BUY' | 'SELL'
-  ): void => {
-    for (const [rawPrice, rawQty] of updates) {
-      const key = normalizePrice(rawPrice);
-      const qty = toNumber(rawQty);
+    const current = this.depthState.getAll()[symbol];
+    const buyLevels = current.BUY;
+    const sellLevels = current.SELL;
 
-      if (Number.isNaN(qty)) continue;
+    const normalizedBids: Array<[number, number]> = [];
+    const normalizedAsks: Array<[number, number]> = [];
 
-      const previous = levels[key];
+    const applySide = (
+      updates: Array<[string | number, string | number]>,
+      levels: Record<string, number>,
+      normalized: Array<[number, number]>,
+      side: 'BUY' | 'SELL',
+    ): void => {
+      for (const [rawPrice, rawQty] of updates) {
+        const key = normalizePrice(rawPrice);
+        const qty = toNumber(rawQty);
 
-      if (qty === 0) {
-        if (previous !== undefined) {
-          delete levels[key];
-          console.log(
-            `[DEPTH] ${symbol} ${side} precio:${key} eliminado (antes ${previous})`
-          );
+        if (Number.isNaN(qty)) continue;
+
+        const previous = levels[key];
+
+        if (qty === 0) {
+          if (previous !== undefined) {
+            delete levels[key];
+            console.log(
+              `[DEPTH] ${symbol} ${side} precio:${key} eliminado (antes ${previous})`,
+            );
+          }
+        } else {
+          levels[key] = qty;
+          if (previous !== qty) {
+            console.log(
+              `[DEPTH] ${symbol} ${side} precio:${key} cambiado de ${previous ?? 0} a ${qty}`,
+            );
+          }
         }
-      } else {
-        levels[key] = qty;
-        if (previous !== qty) {
-          console.log(
-            `[DEPTH] ${symbol} ${side} precio:${key} cambiado de ${previous ?? 0} a ${qty}`
-          );
-        }
+
+        normalized.push([parseFloat(key), qty]);
       }
+    };
 
-      normalized.push([parseFloat(key), qty]);
-    }
-  };
+    applySide(bids, buyLevels, normalizedBids, 'BUY');
+    applySide(asks, sellLevels, normalizedAsks, 'SELL');
 
-  applySide(bids, buyLevels, normalizedBids, 'BUY');
-  applySide(asks, sellLevels, normalizedAsks, 'SELL');
-
-  this.updateQueuePositionsAfterDepthDelta(symbol, normalizedBids, normalizedAsks);
-}
-
-private updateQueuePositionsAfterDepthDelta(
-  symbol: string,
-  bids: Array<[number, number]>,
-  asks: Array<[number, number]>
-): void {
-
-  const active = this.activeOrders.getAll()[symbol];
-  if (!active) return;
-
-  // BUY SIDE — revisar cambios en bids
-  for (const [price, newDepth] of bids) {
-    const key = price.toString();
-    const order = active.BUY?.[key];
-    if (!order) continue;
-
-    const combined = order.queue_position + order.pending_amount;
-
-    if (newDepth < combined) {
-      const newQueue = Math.max(newDepth - order.pending_amount, 0);
-      order.queue_position = newQueue;
-      this.activeOrders.setOrder(symbol, 'BUY', key, order);
-
-      console.log(
-        `[Δ BUY] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`
-      );
-    }
+    this.updateQueuePositionsAfterDepthDelta(symbol, normalizedBids, normalizedAsks);
   }
 
-  // SELL SIDE — revisar cambios en asks
-  for (const [price, newDepth] of asks) {
-    const key = price.toString();
-    const order = active.SELL?.[key];
-    if (!order) continue;
+  updateUserQueuePosition(
+    symbol: string,
+    price: number,
+    qty: number,
+    isMaker: boolean,
+  ): void {
+    const allOrders = this.activeOrders.getAll();
+    const tokenOrders = allOrders[symbol];
 
-    const combined = order.queue_position + order.pending_amount;
+    if (!tokenOrders) {
+      console.log(`[AggTrade][queue] No hay órdenes activas para ${symbol}`);
+      return;
+    }
 
-    if (newDepth < combined) {
-      const newQueue = Math.max(newDepth - order.pending_amount, 0);
-      order.queue_position = newQueue;
-      this.activeOrders.setOrder(symbol, 'SELL', key, order);
+    const side: 'BUY' | 'SELL' = isMaker ? 'SELL' : 'BUY';
+    const priceKey = price.toString();
+    const orderAtPrice = tokenOrders[side]?.[priceKey];
 
+    if (!orderAtPrice) {
       console.log(
-        `[Δ SELL] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`
+        `[AggTrade][queue] No se encontró orden en ${symbol} ${side} @ ${priceKey}`,
       );
+      return;
+    }
+
+    const previousQueue = orderAtPrice.queue_position;
+    const newQueue = Math.max(previousQueue - qty, 0);
+    orderAtPrice.queue_position = newQueue;
+
+    this.activeOrders.setOrder(symbol, side, priceKey, orderAtPrice);
+
+    console.log(
+      `[AggTrade][queue] ${symbol} ${side} @ ${priceKey} → queue ${previousQueue} -> ${newQueue} (executed=${qty})`,
+    );
+  }
+
+  updateCentralStateFromAggTrade(
+    symbol: string,
+    price: number,
+    qty: number,
+    isMaker: boolean,
+  ): void {
+    const executedSide: 'BUY' | 'SELL' = isMaker ? 'BUY' : 'SELL';
+
+    this.centralState.get(symbol); // ensure exists
+
+    if (executedSide === 'BUY') {
+      this.centralState.addExecutedBuy(symbol, qty);
+    } else {
+      this.centralState.addExecutedSell(symbol, qty);
+    }
+
+    const snapshot = this.centralState.get(symbol);
+
+    console.log(
+      `[AggTrade][central] ${symbol} ${executedSide} @ ${price} → executedSinceBuy=${snapshot.executedSinceBuyPriceChange}, executedSinceSell=${snapshot.executedSinceSellPriceChange}`,
+    );
+  }
+
+  private updateQueuePositionsAfterDepthDelta(
+    symbol: string,
+    bids: Array<[number, number]>,
+    asks: Array<[number, number]>,
+  ): void {
+    const active = this.activeOrders.getAll()[symbol];
+    if (!active) return;
+
+    // BUY SIDE — revisar cambios en bids
+    for (const [price, newDepth] of bids) {
+      const key = price.toString();
+      const order = active.BUY?.[key];
+      if (!order) continue;
+
+      const combined = order.queue_position + order.pending_amount;
+
+      if (newDepth < combined) {
+        const newQueue = Math.max(newDepth - order.pending_amount, 0);
+        order.queue_position = newQueue;
+        this.activeOrders.setOrder(symbol, 'BUY', key, order);
+
+        console.log(
+          `[Δ BUY] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`,
+        );
+      }
+    }
+
+    // SELL SIDE — revisar cambios en asks
+    for (const [price, newDepth] of asks) {
+      const key = price.toString();
+      const order = active.SELL?.[key];
+      if (!order) continue;
+
+      const combined = order.queue_position + order.pending_amount;
+
+      if (newDepth < combined) {
+        const newQueue = Math.max(newDepth - order.pending_amount, 0);
+        order.queue_position = newQueue;
+        this.activeOrders.setOrder(symbol, 'SELL', key, order);
+
+        console.log(
+          `[Δ SELL] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`,
+        );
+      }
     }
   }
-}
-
-
 }
