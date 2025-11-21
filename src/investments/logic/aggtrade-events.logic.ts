@@ -39,13 +39,13 @@ export class AggTradeEventsLogic {
     this.stateUpdater.updateUserQueuePosition(symbol, price, qty, isMaker);
     this.stateUpdater.updateCentralStateFromAggTrade(symbol, price, qty, isMaker);
 
+    console.log('Memoria RAM actulizada');
+    handleMarketEvent();
+
     // ----------------------------------------------------------------------------------------------------------------
 
     // Por ahora únicamente avisamos al frontend para que se entere del trade
     this.snapshotGateway.broadcastSnapshot();
-
-    console.log('Memoria RAM actulizada');
-    handleMarketEvent();
   }
 
   // ⭐ Se crearán luego:
