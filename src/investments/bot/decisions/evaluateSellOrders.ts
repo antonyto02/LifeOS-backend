@@ -28,8 +28,9 @@ export function evaluateSellOrder(symbol: string, snapshot: CollisionSnapshot) {
     }
 
     console.log('Cancelando porque el precio ya cayó');
-    cancelSellOrder(id, symbol);
-    placeSellOrder(symbol);
+    cancelSellOrder(id, symbol).finally(() => {
+      placeSellOrder(symbol);
+    });
   }
 }
 
