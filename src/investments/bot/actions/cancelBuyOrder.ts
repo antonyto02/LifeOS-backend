@@ -37,6 +37,7 @@ export const cancelBuyOrder = async (
     console.log(
       `[cancelBuyOrder] No se pudo cancelar la orden de compra ${orderId} para ${symbol}.`,
     );
+    console.log((error as any).response?.data || (error as Error).message);
   }
 };
 
