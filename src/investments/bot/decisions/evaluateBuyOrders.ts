@@ -15,12 +15,12 @@ export function evaluateBuyOrders(symbol: string, snapshot: CollisionSnapshot) {
   const { bidPrice, secondBidPrice, topBid } = snapshot;
 
   for (const order of Object.values(buyOrders)) {
-    const { price } = order;
+    const { price, id } = order;
 
     if (price === bidPrice) {
       if (topBid <= 0.2) {
         console.log('Cancelando porque el precio va a caer');
-        cancelBuyOrder();
+        cancelBuyOrder(id, symbol);
       }
       continue;
     }
@@ -28,12 +28,12 @@ export function evaluateBuyOrders(symbol: string, snapshot: CollisionSnapshot) {
     if (secondBidPrice !== undefined && price === secondBidPrice) {
       if (topBid >= 0.45) {
         console.log('Cancelando porque el precio va a subir');
-        cancelBuyOrder();
+        cancelBuyOrder(id, symbol);
       }
       continue;
     }
 
     console.log('Cancelando por precio fuera de rango');
-    cancelBuyOrder();
+    cancelBuyOrder(id, symbol);
   }
 }

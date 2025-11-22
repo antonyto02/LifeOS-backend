@@ -15,7 +15,7 @@ export function evaluateSellOrder(symbol: string, snapshot: CollisionSnapshot) {
   const { askPrice, topAsk } = snapshot;
 
   for (const order of Object.values(sellOrders)) {
-    const { price } = order;
+    const { price, id } = order;
 
     if (price === askPrice) {
       if (topAsk >= 0.75) {
@@ -27,7 +27,7 @@ export function evaluateSellOrder(symbol: string, snapshot: CollisionSnapshot) {
     }
 
     console.log('Cancelando porque el precio ya cayó');
-    cancelSellOrder();
+    cancelSellOrder(id, symbol);
   }
 }
 
