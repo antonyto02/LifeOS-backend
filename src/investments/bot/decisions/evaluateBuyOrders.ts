@@ -1,7 +1,8 @@
 import { ActiveOrdersState } from '../../state/active-orders.state';
 import { CollisionSnapshot } from './computeCollisionPoint';
+import cancelBuyOrder from '../actions/cancelBuyOrder';
 
-export function evaluateBuyOrders(symbol: string, _snapshot: CollisionSnapshot) {
+export function evaluateBuyOrders(symbol: string, snapshot: CollisionSnapshot) {
   const activeOrdersState = ActiveOrdersState.getInstance();
 
   if (!activeOrdersState) {
@@ -11,5 +12,25 @@ export function evaluateBuyOrders(symbol: string, _snapshot: CollisionSnapshot) 
 
   const buyOrders = activeOrdersState.getAll()[symbol]?.BUY ?? {};
 
-  console.log('Órdenes de compra activas:', buyOrders);
+  const { bidPrice, secondBidPrice, topBid } = snapshot;
+
+  for (const order of Object.values(buyOrders)) {
+    const { price } = order;
+
+    if (price === bidPrice) {
+      if (topBid <= 0.2) {
+        cancelBuyOrder();
+      }
+      continue;
+    }
+
+    if (secondBidPrice !== undefined && price === secondBidPrice) {
+      if (topBid >= 0.45) {
+        cancelBuyOrder();
+      }
+      continue;
+    }
+
+    cancelBuyOrder();
+  }
 }
