@@ -40,12 +40,14 @@ export const placeSellOrder = async (symbol: string): Promise<void> => {
   }
 
   const timestamp = Date.now();
-  const queryString = `timestamp=${timestamp}`;
-  const signature = crypto.createHmac('sha256', secret).update(queryString).digest('hex');
+  const balanceQuery = `timestamp=${timestamp}`;
+  const balanceSignature = crypto.createHmac('sha256', secret).update(balanceQuery).digest('hex');
+
+  let truncatedBalance = 0;
 
   try {
     const response = await axios.get(
-      `https://api.binance.com/api/v3/account?${queryString}&signature=${signature}`,
+      `https://api.binance.com/api/v3/account?${balanceQuery}&signature=${balanceSignature}`,
       {
         headers: {
           'X-MBX-APIKEY': apiKey,
@@ -65,11 +67,50 @@ export const placeSellOrder = async (symbol: string): Promise<void> => {
     const free = Number(tokenBalance.free ?? 0);
     const locked = Number(tokenBalance.locked ?? 0);
     const totalBalance = free + locked;
-    const truncatedBalance = Math.floor(totalBalance);
+    truncatedBalance = Math.floor(totalBalance);
 
     console.log(`Saldo disponible de ${asset}: ${truncatedBalance}`);
   } catch (error) {
     console.log('[placeSellOrder] No se pudo obtener el saldo.');
+    console.log((error as any).response?.data || (error as Error).message);
+    return;
+  }
+
+  if (!truncatedBalance) {
+    return;
+  }
+
+  const orderTimestamp = Date.now();
+  const orderParams = new URLSearchParams({
+    symbol,
+    side: 'SELL',
+    type: 'LIMIT',
+    timeInForce: 'GTC',
+    price: String(bestAskPrice),
+    quantity: String(truncatedBalance),
+    timestamp: String(orderTimestamp),
+  });
+
+  const orderSignature = crypto
+    .createHmac('sha256', secret)
+    .update(orderParams.toString())
+    .digest('hex');
+
+  try {
+    console.log('Orden SELL enviada');
+    const orderResponse = await axios.post(
+      `https://api.binance.com/api/v3/order?${orderParams.toString()}&signature=${orderSignature}`,
+      undefined,
+      {
+        headers: {
+          'X-MBX-APIKEY': apiKey,
+        },
+      },
+    );
+
+    console.log('Binance respondió:', orderResponse.data);
+  } catch (error) {
+    console.log('[placeSellOrder] No se pudo colocar la orden SELL.');
     console.log((error as any).response?.data || (error as Error).message);
   }
 };
