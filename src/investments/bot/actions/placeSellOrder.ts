@@ -1,28 +1,32 @@
 import axios from 'axios';
 import crypto from 'crypto';
-import { DepthState } from '../../state/depth.state';
 
 export const placeSellOrder = async (symbol: string): Promise<void> => {
-  const depthState = DepthState.getInstance();
+  let bestAskPrice: number | undefined;
 
-  if (!depthState) {
+  try {
+    const depthResponse = await axios.get('https://api.binance.com/api/v3/depth', {
+      params: {
+        symbol,
+        limit: 5,
+      },
+    });
+
+    const asks = depthResponse.data?.asks ?? [];
+
+    if (!asks.length) {
+      console.log('Colocando orden de venta...');
+      console.log(`No hay niveles de venta para ${symbol}.`);
+      return;
+    }
+
+    bestAskPrice = Number(asks[0][0]);
+  } catch (error) {
     console.log('Colocando orden de venta...');
-    console.log('No se pudo obtener el estado de profundidad.');
+    console.log('[placeSellOrder] No se pudo obtener la profundidad de mercado.');
+    console.log((error as any).response?.data || (error as Error).message);
     return;
   }
-
-  const sellLevels = depthState.getAll()[symbol]?.SELL;
-  const sellPrices = sellLevels ? Object.keys(sellLevels) : [];
-
-  if (sellPrices.length === 0) {
-    console.log('Colocando orden de venta...');
-    console.log(`No hay niveles de venta para ${symbol}.`);
-    return;
-  }
-
-  const bestAskPrice = sellPrices
-    .map((price) => Number(price))
-    .reduce((lowest, price) => (price < lowest ? price : lowest), Infinity);
 
   console.log('Colocando orden de venta...');
   console.log(`El precio mas bajo de venta de ${symbol} es ${bestAskPrice}`);
