@@ -18,9 +18,7 @@ export function evaluateSellOrder(symbol: string, snapshot: CollisionSnapshot) {
     const { price } = order;
 
     if (price === askPrice) {
-      const topAskPercentage = topAsk * 100;
-
-      if (topAskPercentage >= 75) {
+      if (topAsk >= 0.75) {
         console.log('vendiendo automaticamente porque el precio va a caer');
         executeInstantSell();
       }
