@@ -19,6 +19,7 @@ export function evaluateBuyOrders(symbol: string, snapshot: CollisionSnapshot) {
 
     if (price === bidPrice) {
       if (topBid <= 0.2) {
+        console.log('Cancelando porque el precio va a caer');
         cancelBuyOrder();
       }
       continue;
@@ -26,11 +27,13 @@ export function evaluateBuyOrders(symbol: string, snapshot: CollisionSnapshot) {
 
     if (secondBidPrice !== undefined && price === secondBidPrice) {
       if (topBid >= 0.45) {
+        console.log('Cancelando porque el precio va a subir');
         cancelBuyOrder();
       }
       continue;
     }
 
+    console.log('Cancelando por precio fuera de rango');
     cancelBuyOrder();
   }
 }
