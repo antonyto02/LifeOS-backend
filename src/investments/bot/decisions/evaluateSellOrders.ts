@@ -2,8 +2,12 @@ import { ActiveOrdersState } from '../../state/active-orders.state';
 import { CollisionSnapshot } from './computeCollisionPoint';
 import executeInstantSell from '../actions/executeInstantSell';
 import cancelSellOrder from '../actions/cancelSellOrder';
+import placeSellOrder from '../actions/placeSellOrder';
 
-export function evaluateSellOrder(symbol: string, snapshot: CollisionSnapshot) {
+export async function evaluateSellOrder(
+  symbol: string,
+  snapshot: CollisionSnapshot,
+) {
   const activeOrdersState = ActiveOrdersState.getInstance();
 
   if (!activeOrdersState) {
@@ -27,7 +31,8 @@ export function evaluateSellOrder(symbol: string, snapshot: CollisionSnapshot) {
     }
 
     console.log('Cancelando porque el precio ya cayó');
-    cancelSellOrder(id, symbol);
+    await cancelSellOrder(id, symbol);
+    await placeSellOrder(symbol);
   }
 }
 
