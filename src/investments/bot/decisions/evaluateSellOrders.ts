@@ -1,7 +1,9 @@
 import { ActiveOrdersState } from '../../state/active-orders.state';
 import { CollisionSnapshot } from './computeCollisionPoint';
+import executeInstantSell from '../actions/executeInstantSell';
+import cancelSellOrder from '../actions/cancelSellOrder';
 
-export function evaluateSellOrder(symbol: string, _snapshot: CollisionSnapshot) {
+export function evaluateSellOrder(symbol: string, snapshot: CollisionSnapshot) {
   const activeOrdersState = ActiveOrdersState.getInstance();
 
   if (!activeOrdersState) {
@@ -10,8 +12,25 @@ export function evaluateSellOrder(symbol: string, _snapshot: CollisionSnapshot) 
   }
 
   const sellOrders = activeOrdersState.getAll()[symbol]?.SELL ?? {};
+  const { askPrice, topAsk } = snapshot;
 
-  console.log(sellOrders);
+  for (const order of Object.values(sellOrders)) {
+    const { price } = order;
+
+    if (price === askPrice) {
+      const topAskPercentage = topAsk * 100;
+
+      if (topAskPercentage >= 75) {
+        console.log('vendiendo automaticamente porque el precio va a caer');
+        executeInstantSell();
+      }
+
+      continue;
+    }
+
+    console.log('Cancelando porque el precio ya cayó');
+    cancelSellOrder();
+  }
 }
 
 export default evaluateSellOrder;
