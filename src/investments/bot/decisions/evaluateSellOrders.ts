@@ -24,7 +24,7 @@ export async function evaluateSellOrder(
     if (price === askPrice) {
       if (topAsk >= 0.75) {
         console.log('vendiendo automaticamente porque el precio va a caer');
-        executeInstantSell();
+        await executeInstantSell(symbol);
       }
 
       continue;
