@@ -1,5 +1,6 @@
 import axios from 'axios';
 import crypto from 'crypto';
+import placeSellOrder from './placeSellOrder';
 
 export const cancelSellOrder = async (
   orderId?: number | string,
@@ -33,6 +34,8 @@ export const cancelSellOrder = async (
     );
 
     console.log(`Cancelación de orden de venta ${orderId} para ${symbol} ejecutada.`);
+
+    await placeSellOrder(symbol);
   } catch (error) {
     console.log(
       `[cancelSellOrder] No se pudo cancelar la orden de venta ${orderId} para ${symbol}.`,
