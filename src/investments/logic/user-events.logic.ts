@@ -5,6 +5,7 @@ import { BinanceDepthStreamService } from '../stream/binance-depth-stream.servic
 import { BinanceAggTradeStreamService } from '../stream/binance-aggtrade-stream.service';
 import { StateUpdaterLogic } from './state-updater.logic';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
+import placeSellOrder from '../bot/actions/placeSellOrder';
 
 
 
@@ -74,7 +75,15 @@ export class UserEventsLogic {
 
     if (execType === 'TRADE' && orderStatus === 'FILLED') {
       const orderId = msg.i;
+      const side = msg.S;
       await this.stateUpdater.cancelOrder(orderId);
+
+      if (side === 'BUY') {
+        await placeSellOrder(symbol);
+      } else if (side === 'SELL') {
+        console.log('[user-events] Orden SELL completada.');
+      }
+
       this.snapshotGateway.broadcastSnapshot();
       return;
     }
