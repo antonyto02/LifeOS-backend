@@ -10,7 +10,7 @@ export const cancelSellOrder = async (
     return;
   }
 
-  const secret = process.env.BINANCE_SECRET_KEY;
+  const secret = process.env.BINANCE_API_SECRET;
   const apiKey = process.env.BINANCE_API_KEY;
 
   if (!secret || !apiKey) {
