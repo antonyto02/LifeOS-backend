@@ -61,8 +61,9 @@ export const placeSellOrder = async (symbol: string): Promise<void> => {
     const free = Number(tokenBalance.free ?? 0);
     const locked = Number(tokenBalance.locked ?? 0);
     const totalBalance = free + locked;
+    const truncatedBalance = Math.floor(totalBalance);
 
-    console.log(`Saldo disponible de ${asset}: ${totalBalance}`);
+    console.log(`Saldo disponible de ${asset}: ${truncatedBalance}`);
   } catch (error) {
     console.log('[placeSellOrder] No se pudo obtener el saldo.');
     console.log((error as any).response?.data || (error as Error).message);
