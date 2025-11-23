@@ -22,7 +22,7 @@ export async function evaluateSellOrder(
     const { price, id } = order;
 
     if (price === askPrice) {
-      if (topAsk >= 0.75) {
+      if (topAsk >= 0.95) {
         console.log('vendiendo automaticamente porque el precio va a caer');
         await cancelSellOrder(id, symbol);
         await executeInstantSell(symbol);
