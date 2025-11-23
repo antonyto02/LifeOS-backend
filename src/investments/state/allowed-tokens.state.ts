@@ -1,14 +1,23 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
 @Injectable()
-export class AllowedTokensState {
+export class AllowedTokensState implements OnModuleInit {
+  private static instance: AllowedTokensState | null = null;
   private allowed: Set<string> = new Set();
+
+  constructor() {
+    AllowedTokensState.instance = this;
+  }
 
   onModuleInit() {
     this.allowed.add("ACAUSDT");
     this.allowed.add("BTCUSDT");
     this.allowed.add("ETHUSDT");
-  }  
+  }
+
+  static getInstance(): AllowedTokensState | null {
+    return AllowedTokensState.instance;
+  }
 
   getAll(): string[] {
     return Array.from(this.allowed);

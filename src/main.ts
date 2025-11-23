@@ -6,6 +6,7 @@ import {
 import { AppModule } from './app.module';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { SnapshotGateway } from './investments/snapshot/snapshot.gateway';
+import placeBuyOrder from './investments/bot/actions/placeBuyOrder';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -26,6 +27,8 @@ async function bootstrap() {
   snapshotGateway.bindServer(httpServer);
 
   await app.listen(3000, '0.0.0.0');
+
+  placeBuyOrder();
 }
 
 bootstrap();
