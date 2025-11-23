@@ -11,7 +11,7 @@ export class DepthEventsLogic {
     private readonly snapshotGateway: SnapshotGateway,
   ) {}
 
-  handleDepthMessage(symbol: string, raw: string): void {
+  async handleDepthMessage(symbol: string, raw: string): Promise<void> {
     let msg: any;
     try {
       msg = JSON.parse(raw);
@@ -32,7 +32,7 @@ export class DepthEventsLogic {
     this.stateUpdater.updateCentralState(symbol);
 
     console.log('Memoria RAM actulizada');
-    handleMarketEvent(symbol);
+    await handleMarketEvent(symbol);
 
     // 👉 Avisar al frontend
     this.snapshotGateway.broadcastSnapshot();

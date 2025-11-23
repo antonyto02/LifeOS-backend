@@ -1,8 +1,12 @@
 import { ActiveOrdersState } from '../../state/active-orders.state';
 import { CollisionSnapshot } from './computeCollisionPoint';
 import cancelBuyOrder from '../actions/cancelBuyOrder';
+import placeBuyOrder from '../actions/placeBuyOrder';
 
-export function evaluateBuyOrders(symbol: string, snapshot: CollisionSnapshot) {
+export async function evaluateBuyOrders(
+  symbol: string,
+  snapshot: CollisionSnapshot,
+) {
   const activeOrdersState = ActiveOrdersState.getInstance();
 
   if (!activeOrdersState) {
@@ -20,7 +24,8 @@ export function evaluateBuyOrders(symbol: string, snapshot: CollisionSnapshot) {
     if (price === bidPrice) {
       if (topBid <= 0.2) {
         console.log('Cancelando porque el precio va a caer');
-        cancelBuyOrder(id, symbol);
+        await cancelBuyOrder(id, symbol);
+        await placeBuyOrder();
       }
       continue;
     }
@@ -28,12 +33,14 @@ export function evaluateBuyOrders(symbol: string, snapshot: CollisionSnapshot) {
     if (secondBidPrice !== undefined && price === secondBidPrice) {
       if (topBid >= 0.45) {
         console.log('Cancelando porque el precio va a subir');
-        cancelBuyOrder(id, symbol);
+        await cancelBuyOrder(id, symbol);
+        await placeBuyOrder();
       }
       continue;
     }
 
     console.log('Cancelando por precio fuera de rango');
-    cancelBuyOrder(id, symbol);
+    await cancelBuyOrder(id, symbol);
+    await placeBuyOrder();
   }
 }
