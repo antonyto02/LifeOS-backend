@@ -56,7 +56,9 @@ export const calculateOrderBudget = async (tokens: string[]): Promise<number> =>
     return 0;
   }
 
-  return usdtBalance / items;
+  const perTokenBudget = Math.floor((usdtBalance / items) * 10) / 10;
+
+  return perTokenBudget;
 };
 
 export default calculateOrderBudget;
