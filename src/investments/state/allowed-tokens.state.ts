@@ -11,8 +11,6 @@ export class AllowedTokensState implements OnModuleInit {
 
   onModuleInit() {
     this.allowed.add("ACAUSDT");
-    this.allowed.add("BTCUSDT");
-    this.allowed.add("ETHUSDT");
   }
 
   static getInstance(): AllowedTokensState | null {
