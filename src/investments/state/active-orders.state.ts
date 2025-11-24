@@ -1,0 +1,77 @@
+import { Injectable } from '@nestjs/common';
+
+export interface ActiveOrder {
+  id: number;
+  pending_amount: number;
+  queue_position: number;
+  filled_amount: number;
+  token: string;
+  side: 'BUY' | 'SELL';
+  price: number;
+}
+
+@Injectable()
+export class ActiveOrdersState {
+
+  private static instance: ActiveOrdersState | null = null;
+
+  private activeOrders: Record<
+    string,
+    {
+      BUY: Record<string, ActiveOrder>;
+      SELL: Record<string, ActiveOrder>;
+    }
+  > = {};
+
+  constructor() {
+    ActiveOrdersState.instance = this;
+  }
+
+  static getInstance(): ActiveOrdersState | null {
+    return ActiveOrdersState.instance;
+  }
+
+  getAll() {
+    return this.activeOrders;
+  }
+
+  private ensureToken(token: string) {
+    if (!this.activeOrders[token]) {
+      this.activeOrders[token] = {
+        BUY: {},
+        SELL: {},
+      };
+    }
+  }
+
+  setOrder(
+    token: string,
+    side: 'BUY' | 'SELL',
+    price: string,
+    order: ActiveOrder,
+  ): void {
+    this.ensureToken(token);
+    this.activeOrders[token][side][price] = order;
+  }
+
+  getOrder(token: string, side: 'BUY' | 'SELL', price: string) {
+    return this.activeOrders[token]?.[side]?.[price] || null;
+  }
+
+  deleteOrder(token: string, side: 'BUY' | 'SELL', price: string): void {
+    if (this.activeOrders[token]?.[side]?.[price]) {
+      delete this.activeOrders[token][side][price];
+    }
+  }
+
+  clearToken(token: string): void {
+    if (this.activeOrders[token]) {
+      delete this.activeOrders[token];
+    }
+  }
+
+
+  clearAll(): void {
+    this.activeOrders = {};
+  }
+}
