@@ -6,6 +6,7 @@ import { BinanceAggTradeStreamService } from '../stream/binance-aggtrade-stream.
 import { StateUpdaterLogic } from './state-updater.logic';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
 import placeSellOrder from '../bot/actions/placeSellOrder';
+import placeBuyOrder from '../bot/actions/placeBuyOrder';
 
 
 
@@ -82,6 +83,7 @@ export class UserEventsLogic {
         await placeSellOrder(symbol);
       } else if (side === 'SELL') {
         console.log('[user-events] Orden SELL completada.');
+        await placeBuyOrder();
       }
 
       this.snapshotGateway.broadcastSnapshot();

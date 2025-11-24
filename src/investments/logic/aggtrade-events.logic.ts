@@ -16,7 +16,7 @@ export class AggTradeEventsLogic {
     private readonly stateUpdater: StateUpdaterLogic,
   ) {}
 
-  handleAggTradeMessage(symbol: string, raw: string): void {
+  async handleAggTradeMessage(symbol: string, raw: string): Promise<void> {
     let msg: any;
 
     try {
@@ -40,7 +40,7 @@ export class AggTradeEventsLogic {
     this.stateUpdater.updateCentralStateFromAggTrade(symbol, price, qty, isMaker);
 
     console.log('Memoria RAM actulizada');
-    handleMarketEvent(symbol);
+    await handleMarketEvent(symbol);
 
     // ----------------------------------------------------------------------------------------------------------------
 

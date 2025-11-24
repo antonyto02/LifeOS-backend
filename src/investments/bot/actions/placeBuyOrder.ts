@@ -3,8 +3,11 @@ import determineBuyPrice from './buy/determineBuyPrice';
 import ensureBNB from './buy/ensureBNB';
 import getPendingTokens from './buy/getPendingTokens';
 import placeBuyLimit from './buy/placeBuyLimit';
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 
 export const placeBuyOrder = async (): Promise<void> => {
+  await delay(800);
   const { pendingTokens } = getPendingTokens();
 
   if (pendingTokens.length === 0) {
