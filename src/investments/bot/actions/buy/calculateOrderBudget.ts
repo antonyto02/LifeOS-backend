@@ -40,7 +40,7 @@ export const calculateOrderBudget = async (tokens: string[]): Promise<number> =>
     const free = Number(usdtEntry.free ?? 0);
     const locked = Number(usdtEntry.locked ?? 0);
 
-    usdtBalance = free + locked;
+    usdtBalance = free;
 
     console.log(`[calculateOrderBudget] Saldo recibido de USDT: ${usdtBalance}`);
   } catch (error) {
