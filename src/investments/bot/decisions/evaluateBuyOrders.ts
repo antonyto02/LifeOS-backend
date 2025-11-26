@@ -19,7 +19,7 @@ export async function evaluateBuyOrders(
   const { bidPrice, secondBidPrice, topBid } = snapshot;
 
   for (const order of Object.values(buyOrders)) {
-    const { price, id } = order;
+    const { price, id, queue_position } = order;
 
     if (price === bidPrice) {
       if (topBid <= 0.2) {
@@ -31,7 +31,7 @@ export async function evaluateBuyOrders(
     }
 
     if (secondBidPrice !== undefined && price === secondBidPrice) {
-      if (topBid >= 0.45) {
+      if (topBid >= 0.45 && queue_position > 100_000) {
         console.log('Cancelando porque el precio va a subir');
         await cancelBuyOrder(id, symbol);
         await placeBuyOrder();
