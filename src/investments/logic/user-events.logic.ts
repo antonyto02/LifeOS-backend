@@ -67,7 +67,16 @@ export class UserEventsLogic {
     if (execType === 'TRADE' && orderStatus === 'PARTIALLY_FILLED') {
       const orderId = msg.i;
       const filledQty = parseFloat(msg.l);
+      const side = msg.S;
+
       this.stateUpdater.applyPartialFill(orderId, filledQty);
+
+      if (side === 'BUY') {
+        await placeBuyOrder();
+      } else if (side === 'SELL') {
+        await placeSellOrder(symbol);
+      }
+
       this.snapshotGateway.broadcastSnapshot();
 
       return;
