@@ -72,9 +72,9 @@ export class UserEventsLogic {
       this.stateUpdater.applyPartialFill(orderId, filledQty);
 
       if (side === 'BUY') {
-        await placeBuyOrder();
-      } else if (side === 'SELL') {
         await placeSellOrder(symbol);
+      } else if (side === 'SELL') {
+        await placeBuyOrder();
       }
 
       this.snapshotGateway.broadcastSnapshot();
