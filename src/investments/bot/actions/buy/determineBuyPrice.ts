@@ -30,13 +30,10 @@ export const determineBuyPrice = async (
     { price: bestAskPrice, qty: bestAskQty },
   );
 
-  const totalVolume = bestBidQty + bestAskQty;
-  const bidDominance = bestBidQty / totalVolume;
-
-  console.log('[determineBuyPrice] Bid dominance:', bidDominance);
-
   const secondBidPrice = Number(bids[1][0]);
-  const chosenPrice = bidDominance >= 0.45 ? bestBidPrice : secondBidPrice;
+  const chosenPrice = bestBidQty >= 50_000 ? bestBidPrice : secondBidPrice;
+
+  console.log('[determineBuyPrice] Best bid qty:', bestBidQty);
 
   console.log('[determineBuyPrice] Price chosen:', chosenPrice);
 
