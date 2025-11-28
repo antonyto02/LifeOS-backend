@@ -80,39 +80,54 @@ export const placeSellOrder = async (symbol: string): Promise<void> => {
     return;
   }
 
-  const orderTimestamp = Date.now();
-  const orderParams = new URLSearchParams({
-    symbol,
-    side: 'SELL',
-    type: 'LIMIT',
-    timeInForce: 'GTC',
-    price: String(bestAskPrice),
-    quantity: String(truncatedBalance),
-    timestamp: String(orderTimestamp),
-  });
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const orderSignature = crypto
-    .createHmac('sha256', secret)
-    .update(orderParams.toString())
-    .digest('hex');
+  const attemptPlaceOrder = async (attempt: number): Promise<void> => {
+    const orderTimestamp = Date.now();
+    const orderParams = new URLSearchParams({
+      symbol,
+      side: 'SELL',
+      type: 'LIMIT',
+      timeInForce: 'GTC',
+      price: String(bestAskPrice),
+      quantity: String(truncatedBalance),
+      timestamp: String(orderTimestamp),
+    });
 
-  try {
-    console.log('Orden SELL enviada');
-    const orderResponse = await axios.post(
-      `https://api.binance.com/api/v3/order?${orderParams.toString()}&signature=${orderSignature}`,
-      undefined,
-      {
-        headers: {
-          'X-MBX-APIKEY': apiKey,
+    const orderSignature = crypto
+      .createHmac('sha256', secret)
+      .update(orderParams.toString())
+      .digest('hex');
+
+    try {
+      console.log('Orden SELL enviada');
+      const orderResponse = await axios.post(
+        `https://api.binance.com/api/v3/order?${orderParams.toString()}&signature=${orderSignature}`,
+        undefined,
+        {
+          headers: {
+            'X-MBX-APIKEY': apiKey,
+          },
         },
-      },
-    );
+      );
 
-    console.log('Binance respondió:', orderResponse.data);
-  } catch (error) {
-    console.log('[placeSellOrder] No se pudo colocar la orden SELL.');
-    console.log((error as any).response?.data || (error as Error).message);
-  }
+      console.log('Binance respondió:', orderResponse.data);
+    } catch (error) {
+      console.log(`[placeSellOrder] Intento ${attempt} fallido al colocar la orden SELL.`);
+      console.log((error as any).response?.data || (error as Error).message);
+
+      if (attempt < 2) {
+        console.log('[placeSellOrder] Reintentando en 1 segundo…');
+        await delay(1000);
+        await attemptPlaceOrder(attempt + 1);
+        return;
+      }
+
+      console.log('[placeSellOrder] No se pudo colocar la orden SELL tras reintento.');
+    }
+  };
+
+  await attemptPlaceOrder(1);
 };
 
 export default placeSellOrder;
