@@ -30,7 +30,27 @@ export const placeBuyOrder = async (): Promise<void> => {
   console.log('Colocando orden de compra...');
   console.log('[placeBuyOrder] Orden:', { token, price, quantity });
 
-  await placeBuyLimit(token, price, quantity);
+  const attemptPlaceOrder = async (attempt: number): Promise<void> => {
+    try {
+      await placeBuyLimit(token, price, quantity);
+    } catch (error) {
+      console.log(
+        `[placeBuyOrder] Intento ${attempt} fallido al crear la orden BUY para ${token}.`,
+      );
+      console.log((error as any).response?.data || (error as Error).message);
+
+      if (attempt < 2) {
+        console.log('[placeBuyOrder] Reintentando en 1 segundo…');
+        await delay(1000);
+        await attemptPlaceOrder(attempt + 1);
+        return;
+      }
+
+      console.log('[placeBuyOrder] No se pudo crear la orden BUY tras reintento.');
+    }
+  };
+
+  await attemptPlaceOrder(1);
 
   const { pendingTokens: remainingTokens } = getPendingTokens();
 

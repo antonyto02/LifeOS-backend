@@ -52,6 +52,7 @@ export const placeBuyLimit = async (
       '[placeBuyLimit] Error creando orden BUY:',
       (error as any).response?.data || (error as Error).message,
     );
+    throw error;
   }
 };
 

@@ -4,6 +4,7 @@ export type CollisionSnapshot = {
   bidPrice: number;
   secondBidPrice?: number;
   askPrice: number;
+  depthBid: number;
   topBid: number;
   topAsk: number;
 };
@@ -44,6 +45,7 @@ export function computeCollision(symbol: string): CollisionSnapshot | undefined 
   }
 
   const [bidPrice, bidDepth] = topBidEntry;
+  const depthBid = bidDepth;
   const secondBidPrice = secondBidEntry ? secondBidEntry[0] : undefined;
 
   const [askPrice, askDepth] = sellEntries.reduce((min, current) => {
@@ -66,6 +68,7 @@ export function computeCollision(symbol: string): CollisionSnapshot | undefined 
   return {
     bidPrice,
     secondBidPrice,
+    depthBid,
     askPrice: parseFloat(askPrice),
     topBid,
     topAsk,
