@@ -18,7 +18,9 @@ export async function evaluateSellOrder(
   const sellOrders = activeOrdersState.getAll()[symbol]?.SELL ?? {};
   const { askPrice, topAsk } = snapshot;
 
-  for (const order of Object.values(sellOrders)) {
+  const ordersList = Object.values(sellOrders).flat();
+
+  for (const order of ordersList) {
     const { price, id } = order;
 
     if (price === askPrice) {

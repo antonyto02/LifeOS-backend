@@ -18,7 +18,9 @@ export async function evaluateBuyOrders(
 
   const { bidPrice, secondBidPrice, depthBid } = snapshot;
 
-  for (const order of Object.values(buyOrders)) {
+  const ordersList = Object.values(buyOrders).flat();
+
+  for (const order of ordersList) {
     const { price, id, queue_position } = order;
 
     if (price === bidPrice) {

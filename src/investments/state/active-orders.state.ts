@@ -18,8 +18,8 @@ export class ActiveOrdersState {
   private activeOrders: Record<
     string,
     {
-      BUY: Record<string, ActiveOrder>;
-      SELL: Record<string, ActiveOrder>;
+      BUY: Record<string, ActiveOrder[]>;
+      SELL: Record<string, ActiveOrder[]>;
     }
   > = {};
 
@@ -51,16 +51,43 @@ export class ActiveOrdersState {
     order: ActiveOrder,
   ): void {
     this.ensureToken(token);
-    this.activeOrders[token][side][price] = order;
+    const sideOrders = this.activeOrders[token][side];
+    const ordersAtPrice = sideOrders[price] ?? [];
+
+    const existingIdx = ordersAtPrice.findIndex((o) => o.id === order.id);
+
+    if (existingIdx >= 0) {
+      ordersAtPrice[existingIdx] = order;
+    } else {
+      ordersAtPrice.push(order);
+    }
+
+    sideOrders[price] = ordersAtPrice;
   }
 
   getOrder(token: string, side: 'BUY' | 'SELL', price: string) {
-    return this.activeOrders[token]?.[side]?.[price] || null;
+    return this.activeOrders[token]?.[side]?.[price] || [];
   }
 
-  deleteOrder(token: string, side: 'BUY' | 'SELL', price: string): void {
-    if (this.activeOrders[token]?.[side]?.[price]) {
-      delete this.activeOrders[token][side][price];
+  deleteOrder(
+    token: string,
+    side: 'BUY' | 'SELL',
+    price: string,
+    orderId?: number,
+  ): void {
+    const sideOrders = this.activeOrders[token]?.[side];
+
+    if (!sideOrders || !sideOrders[price]) return;
+
+    if (orderId === undefined) {
+      delete sideOrders[price];
+      return;
+    }
+
+    sideOrders[price] = sideOrders[price].filter((order) => order.id !== orderId);
+
+    if (sideOrders[price].length === 0) {
+      delete sideOrders[price];
     }
   }
 
