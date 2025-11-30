@@ -33,9 +33,17 @@ export async function evaluateSellOrder(
       continue;
     }
 
-    console.log('Cancelando porque el precio ya cayó');
-    await cancelSellOrder(id, symbol);
-    await placeSellOrder(symbol);
+    if (price > askPrice) {
+      console.log('Cancelando porque el precio ya cayó');
+      await cancelSellOrder(id, symbol);
+      await placeSellOrder(symbol);
+      continue;
+    }
+
+    if (price < askPrice) {
+      console.log('Manteniendo orden porque el precio de venta subió');
+      continue;
+    }
   }
 }
 
