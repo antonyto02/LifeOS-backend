@@ -6,9 +6,11 @@ import placeBuyLimit from './buy/placeBuyLimit';
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
 
-export const placeBuyOrder = async (): Promise<void> => {
+export const placeBuyOrder = async (symbol?: string): Promise<void> => {
   await delay(800);
-  const { pendingTokens } = getPendingTokens();
+  const { pendingTokens } = symbol
+    ? { pendingTokens: [symbol] }
+    : getPendingTokens();
 
   if (pendingTokens.length === 0) {
     console.log('[placeBuyOrder] No hay tokens pendientes. Finalizando ejecución.');
