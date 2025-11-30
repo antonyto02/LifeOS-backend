@@ -41,8 +41,16 @@ export async function evaluateBuyOrders(
       continue;
     }
 
-    console.log('Cancelando por precio fuera de rango');
-    await cancelBuyOrder(id, symbol);
-    await placeBuyOrder();
+    if (secondBidPrice !== undefined && price < secondBidPrice) {
+      console.log('Cancelando porque el precio bajó');
+      await cancelBuyOrder(id, symbol);
+      await placeBuyOrder();
+      continue;
+    }
+
+    if (price > bidPrice) {
+      console.log('Ignorando BUY: precio subió y la orden probablemente se ejecutó');
+      continue;
+    }
   }
 }
