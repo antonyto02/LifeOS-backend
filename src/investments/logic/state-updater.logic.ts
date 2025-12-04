@@ -8,6 +8,9 @@ import { CentralState } from '../state/central-state.state';
 import { ActiveOrdersState, ActiveOrder } from '../state/active-orders.state';
 import { calculateDepthLevel } from './depth-level.helper';
 
+const formatDepthAmount = (qty: number | null): string =>
+  qty != null ? qty.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'N/A';
+
 
 
 export interface DepthData {
@@ -135,11 +138,25 @@ export class StateUpdaterLogic {
       buyLevel !== central.buyCurrentLevel || sellLevel !== central.sellCurrentLevel;
     const levelsAreDifferent =
       buyLevel != null && sellLevel != null && buyLevel !== sellLevel;
+    const buyLevelChanged = buyLevel !== central.buyCurrentLevel;
+    const sellLevelChanged = sellLevel !== central.sellCurrentLevel;
 
     if (levelsChanged && levelsAreDifferent) {
-      console.log(
-        `Orderbook cambiado a niveles BUY ${buyLevel ?? 'N/A'} y SELL ${sellLevel ?? 'N/A'}`,
-      );
+      const changes: string[] = [];
+
+      if (buyLevelChanged && buyLevel != null) {
+        const formattedDepth = formatDepthAmount(centralBuyDepth);
+        changes.push(`BUY ${buyLevel}[${formattedDepth}]`);
+      }
+
+      if (sellLevelChanged && sellLevel != null) {
+        const formattedDepth = formatDepthAmount(centralSellDepth);
+        changes.push(`SELL ${sellLevel}[${formattedDepth}]`);
+      }
+
+      if (changes.length > 0) {
+        console.log(`Orderbook cambiado a niveles ${changes.join(' y ')}`);
+      }
     }
 
     if (levelsChanged) {
