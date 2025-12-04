@@ -11,6 +11,15 @@ import { calculateDepthLevel } from './depth-level.helper';
 const formatDepthAmount = (qty: number | null): string =>
   qty != null ? qty.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'N/A';
 
+const resolveDirection = (
+  previousLevel: number | null,
+  nextLevel: number | null,
+): 'subió' | 'bajó' => {
+  if (previousLevel == null || nextLevel == null) return 'subió';
+
+  return nextLevel > previousLevel ? 'subió' : 'bajó';
+};
+
 
 
 export interface DepthData {
@@ -141,21 +150,49 @@ export class StateUpdaterLogic {
     const buyLevelChanged = buyLevel !== central.buyCurrentLevel;
     const sellLevelChanged = sellLevel !== central.sellCurrentLevel;
 
+    const buildChangeMessage = (
+      side: 'BUY' | 'SELL',
+      price: number | null,
+      depthQty: number | null,
+      previousLevel: number | null,
+      nextLevel: number | null,
+    ): string | null => {
+      if (price == null || nextLevel == null) return null;
+
+      const direction = resolveDirection(previousLevel, nextLevel);
+      const formattedDepth = formatDepthAmount(depthQty);
+      const sideLabel = side === 'BUY' ? 'comprar' : 'vender';
+
+      return `Orderbook de ${sideLabel} para ${symbol} en ${price} ${direction} a nivel ${nextLevel}[${formattedDepth}]`;
+    };
+
     if (levelsChanged && levelsAreDifferent) {
       const changes: string[] = [];
 
-      if (buyLevelChanged && buyLevel != null) {
-        const formattedDepth = formatDepthAmount(centralBuyDepth);
-        changes.push(`BUY ${buyLevel}[${formattedDepth}]`);
+      if (buyLevelChanged) {
+        const message = buildChangeMessage(
+          'BUY',
+          central.centralBuyPrice,
+          centralBuyDepth,
+          central.buyCurrentLevel,
+          buyLevel,
+        );
+        if (message) changes.push(message);
       }
 
-      if (sellLevelChanged && sellLevel != null) {
-        const formattedDepth = formatDepthAmount(centralSellDepth);
-        changes.push(`SELL ${sellLevel}[${formattedDepth}]`);
+      if (sellLevelChanged) {
+        const message = buildChangeMessage(
+          'SELL',
+          central.centralSellPrice,
+          centralSellDepth,
+          central.sellCurrentLevel,
+          sellLevel,
+        );
+        if (message) changes.push(message);
       }
 
-      if (changes.length > 0) {
-        console.log(`Orderbook cambiado a niveles ${changes.join(' y ')}`);
+      for (const change of changes) {
+        console.log(change);
       }
     }
 
