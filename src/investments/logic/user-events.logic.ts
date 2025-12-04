@@ -74,7 +74,7 @@ export class UserEventsLogic {
       if (side === 'BUY') {
         await placeSellOrder(symbol);
       } else if (side === 'SELL') {
-        await placeBuyOrder();
+        await placeBuyOrder(symbol);
       }
 
       this.snapshotGateway.broadcastSnapshot();
@@ -92,7 +92,7 @@ export class UserEventsLogic {
         await placeSellOrder(symbol);
       } else if (side === 'SELL') {
         console.log('[user-events] Orden SELL completada.');
-        await placeBuyOrder();
+        await placeBuyOrder(symbol);
       }
 
       this.snapshotGateway.broadcastSnapshot();
