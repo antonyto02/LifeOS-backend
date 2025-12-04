@@ -31,7 +31,7 @@ export const determineBuyPrice = async (
   );
 
   const secondBidPrice = Number(bids[1][0]);
-  const chosenPrice = bestBidQty >= 50_000 ? bestBidPrice : secondBidPrice;
+  const chosenPrice = bestBidQty >= 70_000 ? bestBidPrice : secondBidPrice;
 
   console.log('[determineBuyPrice] Best bid qty:', bestBidQty);
 
