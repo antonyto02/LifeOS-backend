@@ -6,6 +6,7 @@ import { BinanceAggTradeStreamService } from '../stream/binance-aggtrade-stream.
 import { DepthState } from '../state/depth.state';
 import { CentralState } from '../state/central-state.state';
 import { ActiveOrdersState, ActiveOrder } from '../state/active-orders.state';
+import { calculateDepthLevel } from './depth-level.helper';
 
 
 
@@ -110,6 +111,41 @@ export class StateUpdaterLogic {
 
     this.centralState.updateCentralBuyPrice(symbol, centralBuy);
     this.centralState.updateCentralSellPrice(symbol, centralSell);
+  }
+
+  evaluateCentralLevels(symbol: string): void {
+    const depth = this.depthState.getAll()[symbol];
+    if (!depth) return;
+
+    const central = this.centralState.get(symbol);
+
+    const centralBuyDepth =
+      central.centralBuyPrice != null
+        ? depth.BUY[central.centralBuyPrice.toString()] ?? null
+        : null;
+    const centralSellDepth =
+      central.centralSellPrice != null
+        ? depth.SELL[central.centralSellPrice.toString()] ?? null
+        : null;
+
+    const buyLevel = calculateDepthLevel(centralBuyDepth);
+    const sellLevel = calculateDepthLevel(centralSellDepth);
+
+    const levelsChanged =
+      buyLevel !== central.buyCurrentLevel || sellLevel !== central.sellCurrentLevel;
+    const levelsAreDifferent =
+      buyLevel != null && sellLevel != null && buyLevel !== sellLevel;
+
+    if (levelsChanged && levelsAreDifferent) {
+      console.log(
+        `Orderbook cambiado a niveles BUY ${buyLevel ?? 'N/A'} y SELL ${sellLevel ?? 'N/A'}`,
+        this.depthState.getAll()[symbol],
+      );
+    }
+
+    if (levelsChanged) {
+      this.centralState.updateCurrentLevels(symbol, buyLevel, sellLevel);
+    }
   }
 
   createOrUpdateOrder(
