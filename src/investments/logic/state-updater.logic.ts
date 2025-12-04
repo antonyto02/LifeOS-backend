@@ -139,7 +139,6 @@ export class StateUpdaterLogic {
     if (levelsChanged && levelsAreDifferent) {
       console.log(
         `Orderbook cambiado a niveles BUY ${buyLevel ?? 'N/A'} y SELL ${sellLevel ?? 'N/A'}`,
-        this.depthState.getAll()[symbol],
       );
     }
 
@@ -329,17 +328,9 @@ export class StateUpdaterLogic {
         if (qty === 0) {
           if (previous !== undefined) {
             delete levels[key];
-            console.log(
-              `[DEPTH] ${symbol} ${side} precio:${key} eliminado (antes ${previous})`,
-            );
           }
         } else {
           levels[key] = qty;
-          if (previous !== qty) {
-            console.log(
-              `[DEPTH] ${symbol} ${side} precio:${key} cambiado de ${previous ?? 0} a ${qty}`,
-            );
-          }
         }
 
         normalized.push([parseFloat(key), qty]);
@@ -362,7 +353,6 @@ export class StateUpdaterLogic {
     const tokenOrders = allOrders[symbol];
 
     if (!tokenOrders) {
-      console.log(`[AggTrade][queue] No hay órdenes activas para ${symbol}`);
       return;
     }
     
@@ -371,9 +361,6 @@ export class StateUpdaterLogic {
     const ordersAtPrice = tokenOrders[side]?.[priceKey];
 
     if (!ordersAtPrice || ordersAtPrice.length === 0) {
-      console.log(
-        `[AggTrade][queue] No se encontró orden en ${symbol} ${side} @ ${priceKey}`,
-      );
       return;
     }
 
@@ -383,10 +370,6 @@ export class StateUpdaterLogic {
       order.queue_position = newQueue;
 
       this.activeOrders.setOrder(symbol, side, priceKey, order);
-
-      console.log(
-        `[AggTrade][queue] ${symbol} ${side} @ ${priceKey} → queue ${previousQueue} -> ${newQueue} (executed=${qty})`,
-      );
     }
   }
 
@@ -405,12 +388,6 @@ export class StateUpdaterLogic {
     } else {
       this.centralState.addExecutedSell(symbol, qty);
     }
-
-    const snapshot = this.centralState.get(symbol);
-
-    console.log(
-      `[AggTrade][central] ${symbol} ${executedSide} @ ${price} → executedSinceBuy=${snapshot.executedSinceBuyPriceChange}, executedSinceSell=${snapshot.executedSinceSellPriceChange}`,
-    );
   }
 
   private updateQueuePositionsAfterDepthDelta(

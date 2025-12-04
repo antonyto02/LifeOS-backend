@@ -35,9 +35,6 @@ export class BinanceAggTradeStreamService {
     });
 
     ws.on('message', (msg: any) => {
-      console.log(`\n🟢 [AGGTRADE MESSAGE - ${symbol}]`);
-      console.log(msg.toString());
-
       // 👉 Redirigir evento al manejador correcto
       this.aggTradeEventsLogic.handleAggTradeMessage(symbol, msg.toString());
     });

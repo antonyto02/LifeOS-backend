@@ -35,10 +35,6 @@ export class BinanceDepthStreamService {
     });
 
     ws.on('message', (msg: any) => {
-      // 🔵 Log opcional
-      console.log(`\n🔵 [DEPTH MESSAGE - ${symbol}]`);
-      console.log(msg.toString());
-
       // 👉 Aquí enviamos el evento al procesador
       this.depthEventsLogic.handleDepthMessage(symbol, msg.toString());
     });

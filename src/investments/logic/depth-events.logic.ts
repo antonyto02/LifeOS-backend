@@ -31,12 +31,9 @@ export class DepthEventsLogic {
     // 👉 Recalcular central buy/sell
     this.stateUpdater.updateCentralState(symbol);
     this.stateUpdater.evaluateCentralLevels(symbol);
-
-    console.log('Memoria RAM actulizada');
     await handleMarketEvent(symbol);
 
     // 👉 Avisar al frontend
     this.snapshotGateway.broadcastSnapshot();
-    console.log('Datos enviados al frontend');
   }
 }
