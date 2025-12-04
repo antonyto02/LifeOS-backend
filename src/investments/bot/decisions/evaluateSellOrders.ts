@@ -18,7 +18,9 @@ export async function evaluateSellOrder(
   const sellOrders = activeOrdersState.getAll()[symbol]?.SELL ?? {};
   const { askPrice, topAsk } = snapshot;
 
-  for (const order of Object.values(sellOrders)) {
+  const ordersList = Object.values(sellOrders).flat();
+
+  for (const order of ordersList) {
     const { price, id } = order;
 
     if (price === askPrice) {
@@ -31,9 +33,17 @@ export async function evaluateSellOrder(
       continue;
     }
 
-    console.log('Cancelando porque el precio ya cayó');
-    await cancelSellOrder(id, symbol);
-    await placeSellOrder(symbol);
+    if (price > askPrice) {
+      console.log('Cancelando porque el precio ya cayó');
+      await cancelSellOrder(id, symbol);
+      await placeSellOrder(symbol);
+      continue;
+    }
+
+    if (price < askPrice) {
+      console.log('Manteniendo orden porque el precio de venta subió');
+      continue;
+    }
   }
 }
 

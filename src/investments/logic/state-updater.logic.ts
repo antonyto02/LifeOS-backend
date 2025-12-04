@@ -160,15 +160,17 @@ export class StateUpdaterLogic {
         const ordersAtSide = sides[side];
 
         for (const price of Object.keys(ordersAtSide)) {
-          const order = ordersAtSide[price];
+          const ordersAtPrice = ordersAtSide[price];
 
-          if (order.id === orderId) {
-            return {
-              symbol,
-              side,
-              price,
-              order,
-            };
+          for (const order of ordersAtPrice) {
+            if (order.id === orderId) {
+              return {
+                symbol,
+                side,
+                price,
+                order,
+              };
+            }
           }
         }
       }
@@ -188,13 +190,13 @@ export class StateUpdaterLogic {
     const { symbol, side, price } = found;
 
     // 1. Eliminar la orden puntual
-    this.activeOrders.deleteOrder(symbol, side, price);
+    this.activeOrders.deleteOrder(symbol, side, price, orderId);
     console.log(`[cancelOrder] Orden ${orderId} eliminada de ${symbol} ${side} @ ${price}`);
 
     // 2. Verificar si siguen existiendo órdenes en ese mismo precio
     const remainingAtPrice = this.activeOrders.getOrder(symbol, side, price);
 
-    if (!remainingAtPrice) {
+    if (!remainingAtPrice || remainingAtPrice.length === 0) {
       console.log(`[cancelOrder] No quedan órdenes en el precio ${price}, limpiando price-key...`);
       this.activeOrders.deleteOrder(symbol, side, price);
     }
@@ -330,24 +332,26 @@ export class StateUpdaterLogic {
     
     const side: 'BUY' | 'SELL' = isMaker ? 'BUY' : 'SELL';
     const priceKey = price.toString();
-    const orderAtPrice = tokenOrders[side]?.[priceKey];
+    const ordersAtPrice = tokenOrders[side]?.[priceKey];
 
-    if (!orderAtPrice) {
+    if (!ordersAtPrice || ordersAtPrice.length === 0) {
       console.log(
         `[AggTrade][queue] No se encontró orden en ${symbol} ${side} @ ${priceKey}`,
       );
       return;
     }
 
-    const previousQueue = orderAtPrice.queue_position;
-    const newQueue = Math.max(previousQueue - qty, 0);
-    orderAtPrice.queue_position = newQueue;
+    for (const order of ordersAtPrice) {
+      const previousQueue = order.queue_position;
+      const newQueue = Math.max(previousQueue - qty, 0);
+      order.queue_position = newQueue;
 
-    this.activeOrders.setOrder(symbol, side, priceKey, orderAtPrice);
+      this.activeOrders.setOrder(symbol, side, priceKey, order);
 
-    console.log(
-      `[AggTrade][queue] ${symbol} ${side} @ ${priceKey} → queue ${previousQueue} -> ${newQueue} (executed=${qty})`,
-    );
+      console.log(
+        `[AggTrade][queue] ${symbol} ${side} @ ${priceKey} → queue ${previousQueue} -> ${newQueue} (executed=${qty})`,
+      );
+    }
   }
 
   updateCentralStateFromAggTrade(
@@ -384,38 +388,42 @@ export class StateUpdaterLogic {
     // BUY SIDE — revisar cambios en bids
     for (const [price, newDepth] of bids) {
       const key = price.toString();
-      const order = active.BUY?.[key];
-      if (!order) continue;
+      const ordersAtPrice = active.BUY?.[key];
+      if (!ordersAtPrice || ordersAtPrice.length === 0) continue;
 
-      const combined = order.queue_position + order.pending_amount;
+      for (const order of ordersAtPrice) {
+        const combined = order.queue_position + order.pending_amount;
 
-      if (newDepth < combined) {
-        const newQueue = Math.max(newDepth - order.pending_amount, 0);
-        order.queue_position = newQueue;
-        this.activeOrders.setOrder(symbol, 'BUY', key, order);
+        if (newDepth < combined) {
+          const newQueue = Math.max(newDepth - order.pending_amount, 0);
+          order.queue_position = newQueue;
+          this.activeOrders.setOrder(symbol, 'BUY', key, order);
 
-        console.log(
-          `[Δ BUY] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`,
-        );
+          console.log(
+            `[Δ BUY] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`,
+          );
+        }
       }
     }
 
     // SELL SIDE — revisar cambios en asks
     for (const [price, newDepth] of asks) {
       const key = price.toString();
-      const order = active.SELL?.[key];
-      if (!order) continue;
+      const ordersAtPrice = active.SELL?.[key];
+      if (!ordersAtPrice || ordersAtPrice.length === 0) continue;
 
-      const combined = order.queue_position + order.pending_amount;
+      for (const order of ordersAtPrice) {
+        const combined = order.queue_position + order.pending_amount;
 
-      if (newDepth < combined) {
-        const newQueue = Math.max(newDepth - order.pending_amount, 0);
-        order.queue_position = newQueue;
-        this.activeOrders.setOrder(symbol, 'SELL', key, order);
+        if (newDepth < combined) {
+          const newQueue = Math.max(newDepth - order.pending_amount, 0);
+          order.queue_position = newQueue;
+          this.activeOrders.setOrder(symbol, 'SELL', key, order);
 
-        console.log(
-          `[Δ SELL] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`,
-        );
+          console.log(
+            `[Δ SELL] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`,
+          );
+        }
       }
     }
   }

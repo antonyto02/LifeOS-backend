@@ -18,29 +18,23 @@ export async function evaluateBuyOrders(
 
   const { bidPrice, secondBidPrice, depthBid } = snapshot;
 
-  for (const order of Object.values(buyOrders)) {
+  const ordersList = Object.values(buyOrders).flat();
+
+  for (const order of ordersList) {
     const { price, id, queue_position } = order;
 
     if (price === bidPrice) {
-      if (depthBid < 50_000) {
+      if (depthBid < 130_000) {
         console.log('Cancelando porque el precio va a caer');
         await cancelBuyOrder(id, symbol);
-        await placeBuyOrder();
+        await placeBuyOrder(symbol);
       }
       continue;
     }
 
-    if (secondBidPrice !== undefined && price === secondBidPrice) {
-      if (queue_position > 50_000 && depthBid > 50_000) {
-        console.log('Cancelando porque el precio va a subir');
-        await cancelBuyOrder(id, symbol);
-        await placeBuyOrder();
-      }
-      continue;
-    }
 
-    console.log('Cancelando por precio fuera de rango');
-    await cancelBuyOrder(id, symbol);
-    await placeBuyOrder();
+
+
+
   }
 }
