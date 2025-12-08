@@ -38,15 +38,12 @@ export class AggTradeEventsLogic {
     // 1) ⭐ FUTURO: aquí vamos a actualizar el queue del usuario si tiene ordenes en este precio
     this.stateUpdater.updateUserQueuePosition(symbol, price, qty, isMaker);
     this.stateUpdater.updateCentralStateFromAggTrade(symbol, price, qty, isMaker);
-
-    console.log('Memoria RAM actulizada');
     await handleMarketEvent(symbol);
 
     // ----------------------------------------------------------------------------------------------------------------
 
     // Por ahora únicamente avisamos al frontend para que se entere del trade
     this.snapshotGateway.broadcastSnapshot();
-    console.log('Datos enviados al frontend');
   }
 
   // ⭐ Se crearán luego:

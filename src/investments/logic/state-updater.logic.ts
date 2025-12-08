@@ -6,6 +6,19 @@ import { BinanceAggTradeStreamService } from '../stream/binance-aggtrade-stream.
 import { DepthState } from '../state/depth.state';
 import { CentralState } from '../state/central-state.state';
 import { ActiveOrdersState, ActiveOrder } from '../state/active-orders.state';
+import { calculateDepthLevel } from './depth-level.helper';
+
+const formatDepthAmount = (qty: number | null): string =>
+  qty != null ? qty.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'N/A';
+
+const resolveDirection = (
+  previousLevel: number | null,
+  nextLevel: number | null,
+): 'subió' | 'bajó' => {
+  if (previousLevel == null || nextLevel == null) return 'subió';
+
+  return nextLevel > previousLevel ? 'subió' : 'bajó';
+};
 
 
 
@@ -110,6 +123,82 @@ export class StateUpdaterLogic {
 
     this.centralState.updateCentralBuyPrice(symbol, centralBuy);
     this.centralState.updateCentralSellPrice(symbol, centralSell);
+  }
+
+  evaluateCentralLevels(symbol: string): void {
+    const depth = this.depthState.getAll()[symbol];
+    if (!depth) return;
+
+    const central = this.centralState.get(symbol);
+
+    const centralBuyDepth =
+      central.centralBuyPrice != null
+        ? depth.BUY[central.centralBuyPrice.toString()] ?? null
+        : null;
+    const centralSellDepth =
+      central.centralSellPrice != null
+        ? depth.SELL[central.centralSellPrice.toString()] ?? null
+        : null;
+
+    const buyLevel = calculateDepthLevel(centralBuyDepth);
+    const sellLevel = calculateDepthLevel(centralSellDepth);
+
+    const levelsChanged =
+      buyLevel !== central.buyCurrentLevel || sellLevel !== central.sellCurrentLevel;
+    const levelsAreDifferent =
+      buyLevel != null && sellLevel != null && buyLevel !== sellLevel;
+    const buyLevelChanged = buyLevel !== central.buyCurrentLevel;
+    const sellLevelChanged = sellLevel !== central.sellCurrentLevel;
+
+    const buildChangeMessage = (
+      side: 'BUY' | 'SELL',
+      price: number | null,
+      depthQty: number | null,
+      previousLevel: number | null,
+      nextLevel: number | null,
+    ): string | null => {
+      if (price == null || nextLevel == null) return null;
+
+      const direction = resolveDirection(previousLevel, nextLevel);
+      const formattedDepth = formatDepthAmount(depthQty);
+      const sideLabel = side === 'BUY' ? 'comprar' : 'vender';
+
+      return `Orderbook de ${sideLabel} para ${symbol} en ${price} ${direction} a nivel ${nextLevel}[${formattedDepth}]`;
+    };
+
+    if (levelsChanged && levelsAreDifferent) {
+      const changes: string[] = [];
+
+      if (buyLevelChanged) {
+        const message = buildChangeMessage(
+          'BUY',
+          central.centralBuyPrice,
+          centralBuyDepth,
+          central.buyCurrentLevel,
+          buyLevel,
+        );
+        if (message) changes.push(message);
+      }
+
+      if (sellLevelChanged) {
+        const message = buildChangeMessage(
+          'SELL',
+          central.centralSellPrice,
+          centralSellDepth,
+          central.sellCurrentLevel,
+          sellLevel,
+        );
+        if (message) changes.push(message);
+      }
+
+      for (const change of changes) {
+        console.log(change);
+      }
+    }
+
+    if (levelsChanged) {
+      this.centralState.updateCurrentLevels(symbol, buyLevel, sellLevel);
+    }
   }
 
   createOrUpdateOrder(
@@ -293,17 +382,9 @@ export class StateUpdaterLogic {
         if (qty === 0) {
           if (previous !== undefined) {
             delete levels[key];
-            console.log(
-              `[DEPTH] ${symbol} ${side} precio:${key} eliminado (antes ${previous})`,
-            );
           }
         } else {
           levels[key] = qty;
-          if (previous !== qty) {
-            console.log(
-              `[DEPTH] ${symbol} ${side} precio:${key} cambiado de ${previous ?? 0} a ${qty}`,
-            );
-          }
         }
 
         normalized.push([parseFloat(key), qty]);
@@ -326,7 +407,6 @@ export class StateUpdaterLogic {
     const tokenOrders = allOrders[symbol];
 
     if (!tokenOrders) {
-      console.log(`[AggTrade][queue] No hay órdenes activas para ${symbol}`);
       return;
     }
     
@@ -335,9 +415,6 @@ export class StateUpdaterLogic {
     const ordersAtPrice = tokenOrders[side]?.[priceKey];
 
     if (!ordersAtPrice || ordersAtPrice.length === 0) {
-      console.log(
-        `[AggTrade][queue] No se encontró orden en ${symbol} ${side} @ ${priceKey}`,
-      );
       return;
     }
 
@@ -347,10 +424,6 @@ export class StateUpdaterLogic {
       order.queue_position = newQueue;
 
       this.activeOrders.setOrder(symbol, side, priceKey, order);
-
-      console.log(
-        `[AggTrade][queue] ${symbol} ${side} @ ${priceKey} → queue ${previousQueue} -> ${newQueue} (executed=${qty})`,
-      );
     }
   }
 
@@ -369,12 +442,6 @@ export class StateUpdaterLogic {
     } else {
       this.centralState.addExecutedSell(symbol, qty);
     }
-
-    const snapshot = this.centralState.get(symbol);
-
-    console.log(
-      `[AggTrade][central] ${symbol} ${executedSide} @ ${price} → executedSinceBuy=${snapshot.executedSinceBuyPriceChange}, executedSinceSell=${snapshot.executedSinceSellPriceChange}`,
-    );
   }
 
   private updateQueuePositionsAfterDepthDelta(

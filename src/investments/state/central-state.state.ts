@@ -6,6 +6,9 @@ export interface CentralStateEntry {
 
   centralSellPrice: number | null;
   executedSinceSellPriceChange: number;
+
+  buyCurrentLevel: number | null;
+  sellCurrentLevel: number | null;
 }
 
 @Injectable()
@@ -20,6 +23,9 @@ export class CentralState {
 
         centralSellPrice: null,
         executedSinceSellPriceChange: 0,
+
+        buyCurrentLevel: null,
+        sellCurrentLevel: null,
       };
     }
   }
@@ -63,6 +69,18 @@ export class CentralState {
   addExecutedSell(token: string, executed: number): void {
     this.ensureToken(token);
     this.centralState[token].executedSinceSellPriceChange += executed;
+  }
+
+  updateCurrentLevels(
+    token: string,
+    buyLevel: number | null,
+    sellLevel: number | null,
+  ): void {
+    this.ensureToken(token);
+    const entry = this.centralState[token];
+
+    entry.buyCurrentLevel = buyLevel;
+    entry.sellCurrentLevel = sellLevel;
   }
 
   clearToken(token: string): void {
