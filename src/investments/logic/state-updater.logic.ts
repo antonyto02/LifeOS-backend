@@ -305,16 +305,8 @@ export class StateUpdaterLogic {
     centralBuyDepth: number | null,
     previousCentralBuyDepth: number | null,
     alertBody: string,
-    priceChanged: boolean,
-    previousCentralBuyPrice: number | null,
   ): Promise<void> {
-    if (
-      centralBuyPrice == null ||
-      centralBuyDepth == null ||
-      previousCentralBuyDepth == null ||
-      priceChanged ||
-      previousCentralBuyPrice !== centralBuyPrice
-    ) {
+    if (centralBuyPrice == null || centralBuyDepth == null || previousCentralBuyDepth == null) {
       return;
     }
 
@@ -323,6 +315,9 @@ export class StateUpdaterLogic {
     for (const threshold of thresholds) {
       if (previousCentralBuyDepth > threshold && centralBuyDepth <= threshold) {
         const title = `Fila de compra cayo a ${this.formatMagnitude(threshold)}`;
+        console.log(
+          `[alerts] ${symbol}: profundidad BUY cayó de ${this.formatMagnitude(previousCentralBuyDepth)} a ${this.formatMagnitude(centralBuyDepth)} (umbral ${this.formatMagnitude(threshold)}) – enviando notificación`,
+        );
         await alertNotification(symbol, title, alertBody);
       }
     }
@@ -348,6 +343,9 @@ export class StateUpdaterLogic {
     );
 
     if (centralUpdate.buyPriceChanged || centralUpdate.sellPriceChanged) {
+      console.log(
+        `[alerts] ${symbol}: cambio de precio detectado (BUY: ${centralUpdate.previousCentralBuyPrice} -> ${centralBuyPrice} | SELL: ${centralUpdate.previousCentralSellPrice} -> ${centralSellPrice}). Enviando notificación.`,
+      );
       await alertNotification(symbol, 'Cambio de precio', alertBody);
     }
 
@@ -357,8 +355,6 @@ export class StateUpdaterLogic {
       centralBuyDepth,
       centralUpdate.previousCentralBuyDepth,
       alertBody,
-      centralUpdate.buyPriceChanged,
-      centralUpdate.previousCentralBuyPrice,
     );
   }
 
