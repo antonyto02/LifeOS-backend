@@ -292,13 +292,13 @@ export class StateUpdaterLogic {
     const sellNearest = this.formatMagnitude(sellQueue.nearest);
     const sellFurthest = this.formatMagnitude(sellQueue.furthest);
 
-    const labelWidth = 'Furthest:'.length + 1;
-    const padLabel = (label: string) => label.padEnd(labelWidth, ' ');
-    const line1 = `${padLabel('Buy:')} ${formatPrice(centralBuyPrice)}|${buyDepthText} | ${padLabel('Sell:')} ${formatPrice(centralSellPrice)}|${sellDepthText}`;
-    const line2 = `${padLabel('Nearest:')} ${buyNearest} | ${padLabel('Nearest:')} ${sellNearest}`;
-    const line3 = `${padLabel('Furthest:')} ${buyFurthest} | ${padLabel('Furthest:')} ${sellFurthest}`;
+    const colWidth = 22;
+    const line1 = `Buy: ${formatPrice(centralBuyPrice)}|${buyDepthText}`.padEnd(colWidth, ' ') +
+      `| Sell: ${formatPrice(centralSellPrice)}|${sellDepthText}`;
+    const line2 = `Nearest: ${buyNearest}`.padEnd(colWidth, ' ') + `| Nearest: ${sellNearest}`;
+    const line3 = `Furthest: ${buyFurthest}`.padEnd(colWidth, ' ') + `| Furthest: ${sellFurthest}`;
 
-    return [line1, line2, line3].join('\n');
+    return `${line1}\n${line2}\n${line3}`;
   }
 
   private async maybeNotifyBuyDepthDrop(
