@@ -294,12 +294,9 @@ export class StateUpdaterLogic {
 
     const labelWidth = 'Furthest:'.length + 1;
     const padLabel = (label: string) => label.padEnd(labelWidth, ' ');
-    const symbolPrefix = `[${symbol}] `;
-    const emptyPrefix = ' '.repeat(symbolPrefix.length);
-
-    const line1 = `${symbolPrefix}${padLabel('Buy:')} ${formatPrice(centralBuyPrice)}|${buyDepthText} | ${padLabel('Sell:')} ${formatPrice(centralSellPrice)}|${sellDepthText}`;
-    const line2 = `${emptyPrefix}${padLabel('Nearest:')} ${buyNearest} | ${padLabel('Nearest:')} ${sellNearest}`;
-    const line3 = `${emptyPrefix}${padLabel('Furthest:')} ${buyFurthest} | ${padLabel('Furthest:')} ${sellFurthest}`;
+    const line1 = `${padLabel('Buy:')} ${formatPrice(centralBuyPrice)}|${buyDepthText} | ${padLabel('Sell:')} ${formatPrice(centralSellPrice)}|${sellDepthText}`;
+    const line2 = `${padLabel('Nearest:')} ${buyNearest} | ${padLabel('Nearest:')} ${sellNearest}`;
+    const line3 = `${padLabel('Furthest:')} ${buyFurthest} | ${padLabel('Furthest:')} ${sellFurthest}`;
 
     return [line1, line2, line3].join('\n');
   }
