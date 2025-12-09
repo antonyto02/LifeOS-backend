@@ -8,6 +8,7 @@ import { CentralState } from '../state/central-state.state';
 import { ActiveOrdersState, ActiveOrder } from '../state/active-orders.state';
 import { calculateDepthLevel } from './depth-level.helper';
 import { alertNotification } from '../notifications/alertNotification';
+import { generalNotification } from '../notifications/generalNotification';
 
 const formatDepthAmount = (qty: number | null): string =>
   qty != null ? qty.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'N/A';
@@ -178,6 +179,14 @@ export class StateUpdaterLogic {
       centralUpdate?.centralSellDepth ??
       (centralSellPrice != null ? depth.SELL[centralSellPrice.toString()] ?? null : null);
 
+    const alertBody = this.buildAlertBody(
+      symbol,
+      centralBuyPrice,
+      centralSellPrice,
+      centralBuyDepth,
+      centralSellDepth,
+    );
+
     const buyLevel = calculateDepthLevel(centralBuyDepth);
     const sellLevel = calculateDepthLevel(centralSellDepth);
 
@@ -232,6 +241,16 @@ export class StateUpdaterLogic {
       for (const change of changes) {
         console.log(change);
       }
+    }
+
+    if (buyLevelChanged) {
+      await this.maybeNotifyGeneralBuyLevelChange(
+        symbol,
+        central.buyCurrentLevel,
+        buyLevel,
+        centralUpdate ?? null,
+        alertBody,
+      );
     }
 
     if (levelsChanged) {
@@ -323,6 +342,51 @@ export class StateUpdaterLogic {
         await alertNotification(symbol, title, alertBody);
       }
     }
+  }
+
+  private async maybeNotifyGeneralBuyLevelChange(
+    symbol: string,
+    previousBuyLevel: number | null,
+    nextBuyLevel: number | null,
+    centralUpdate: CentralUpdateSummary | null,
+    body: string,
+  ): Promise<void> {
+    if (previousBuyLevel == null || nextBuyLevel == null) return;
+    if (!centralUpdate) return;
+
+    const { previousCentralBuyDepth, centralBuyDepth } = centralUpdate;
+
+    if (centralBuyDepth == null || previousCentralBuyDepth == null) return;
+
+    const direction = resolveDirection(previousBuyLevel, nextBuyLevel);
+    const depthSummary = `${this.formatMagnitude(previousCentralBuyDepth)} -> ${this.formatMagnitude(centralBuyDepth)}`;
+
+    if (direction === 'subió') {
+      console.log(
+        `[alerts] ${symbol}: buy level increased from ${previousBuyLevel} to ${nextBuyLevel} (depth ${depthSummary}). Enviando notificación GENERAL.`,
+      );
+      await generalNotification({
+        symbol,
+        action: 'GENERAL',
+        title: `[${symbol}] Buy queue level increased.`,
+        body,
+        sound: null,
+      });
+      return;
+    }
+
+    if (centralBuyDepth <= 400000) return;
+
+    console.log(
+      `[alerts] ${symbol}: buy level decreased from ${previousBuyLevel} to ${nextBuyLevel} (depth ${depthSummary}). Enviando notificación GENERAL.`,
+    );
+    await generalNotification({
+      symbol,
+      action: 'GENERAL',
+      title: `[${symbol}] Buy queue level decreased.`,
+      body,
+      sound: null,
+    });
   }
 
   private async handleAlertNotifications(

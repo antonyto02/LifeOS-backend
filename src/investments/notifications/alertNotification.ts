@@ -8,5 +8,6 @@ export async function alertNotification(symbol: string, title: string, body: str
     action: 'ALERT',
     title,
     body,
+    sound: 'default',
   });
 }

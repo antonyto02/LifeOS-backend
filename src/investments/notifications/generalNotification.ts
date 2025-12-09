@@ -21,7 +21,7 @@ export async function generalNotification({
   action,
   title,
   body,
-  sound = 'default',
+  sound = null,
   data,
 }: NotificationPayload): Promise<void> {
   const deviceToken = DeviceTokenState.getInstance().getDeviceToken();
