@@ -49,5 +49,12 @@ export async function generalNotification({
     tag: collapseId,
   };
 
-  await expo.sendPushNotificationsAsync([message]);
+  try {
+    await expo.sendPushNotificationsAsync([message]);
+  } catch (error) {
+    console.error(
+      `[notifications] Error enviando Push, pero el bot sigue vivo. Action: ${action}, Symbol: ${symbol}`,
+      error,
+    );
+  }
 }
