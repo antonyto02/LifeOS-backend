@@ -368,7 +368,7 @@ export class StateUpdaterLogic {
       await generalNotification({
         symbol,
         action: 'GENERAL',
-        title: `[${symbol}] Buy queue level increased.`,
+        title: `[${symbol}] Buy queue is above ${this.formatMagnitude(centralBuyDepth)}.`,
         body,
         sound: null,
       });
@@ -383,7 +383,7 @@ export class StateUpdaterLogic {
     await generalNotification({
       symbol,
       action: 'GENERAL',
-      title: `[${symbol}] Buy queue level decreased.`,
+      title: `[${symbol}] Buy queue is below ${this.formatMagnitude(centralBuyDepth)}.`,
       body,
       sound: null,
     });
