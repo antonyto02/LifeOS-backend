@@ -7,6 +7,7 @@ import { DepthState } from '../state/depth.state';
 import { CentralState } from '../state/central-state.state';
 import { ActiveOrdersState, ActiveOrder } from '../state/active-orders.state';
 import { calculateDepthLevel } from './depth-level.helper';
+import { alertNotification } from '../notifications/alertNotification';
 
 const formatDepthAmount = (qty: number | null): string =>
   qty != null ? qty.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'N/A';
@@ -18,6 +19,18 @@ const resolveDirection = (
   if (previousLevel == null || nextLevel == null) return 'subió';
 
   return nextLevel > previousLevel ? 'subió' : 'bajó';
+};
+
+type CentralUpdateSummary = {
+  centralBuyPrice: number | null;
+  centralSellPrice: number | null;
+  centralBuyDepth: number | null;
+  centralSellDepth: number | null;
+  previousCentralBuyPrice: number | null;
+  previousCentralSellPrice: number | null;
+  previousCentralBuyDepth: number | null;
+  buyPriceChanged: boolean;
+  sellPriceChanged: boolean;
 };
 
 
@@ -107,38 +120,63 @@ export class StateUpdaterLogic {
     this.depthState.setSnapshot(symbol, buyMap, sellMap);
   }
 
-  updateCentralState(symbol: string): void {
+  updateCentralState(symbol: string): CentralUpdateSummary | null {
     const depth = this.depthState.getAll()[symbol];
-    if (!depth) return;
+    if (!depth) return null;
 
     const buyLevels = Object.keys(depth.BUY).map((p) => parseFloat(p));
     const sellLevels = Object.keys(depth.SELL).map((p) => parseFloat(p));
 
     if (buyLevels.length === 0 || sellLevels.length === 0) {
-      return;
+      return null;
     }
 
     const centralBuy = Math.max(...buyLevels);
     const centralSell = Math.min(...sellLevels);
+    const entry = this.centralState.get(symbol);
+
+    const previousCentralBuyPrice = entry.centralBuyPrice;
+    const previousCentralSellPrice = entry.centralSellPrice;
+    const previousCentralBuyDepth = entry.centralBuyDepth;
+
+    const centralBuyDepth = depth.BUY[centralBuy.toString()] ?? null;
+    const centralSellDepth = depth.SELL[centralSell.toString()] ?? null;
 
     this.centralState.updateCentralBuyPrice(symbol, centralBuy);
     this.centralState.updateCentralSellPrice(symbol, centralSell);
+    this.centralState.updateCentralDepths(symbol, centralBuyDepth, centralSellDepth);
+
+    return {
+      centralBuyPrice: centralBuy,
+      centralSellPrice: centralSell,
+      centralBuyDepth,
+      centralSellDepth,
+      previousCentralBuyPrice,
+      previousCentralSellPrice,
+      previousCentralBuyDepth,
+      buyPriceChanged: previousCentralBuyPrice !== centralBuy,
+      sellPriceChanged: previousCentralSellPrice !== centralSell,
+    };
   }
 
-  evaluateCentralLevels(symbol: string): void {
+  async evaluateCentralLevels(
+    symbol: string,
+    centralUpdate?: CentralUpdateSummary,
+  ): Promise<void> {
     const depth = this.depthState.getAll()[symbol];
     if (!depth) return;
 
     const central = this.centralState.get(symbol);
 
+    const centralBuyPrice = centralUpdate?.centralBuyPrice ?? central.centralBuyPrice;
+    const centralSellPrice = centralUpdate?.centralSellPrice ?? central.centralSellPrice;
+
     const centralBuyDepth =
-      central.centralBuyPrice != null
-        ? depth.BUY[central.centralBuyPrice.toString()] ?? null
-        : null;
+      centralUpdate?.centralBuyDepth ??
+      (centralBuyPrice != null ? depth.BUY[centralBuyPrice.toString()] ?? null : null);
     const centralSellDepth =
-      central.centralSellPrice != null
-        ? depth.SELL[central.centralSellPrice.toString()] ?? null
-        : null;
+      centralUpdate?.centralSellDepth ??
+      (centralSellPrice != null ? depth.SELL[centralSellPrice.toString()] ?? null : null);
 
     const buyLevel = calculateDepthLevel(centralBuyDepth);
     const sellLevel = calculateDepthLevel(centralSellDepth);
@@ -172,7 +210,7 @@ export class StateUpdaterLogic {
       if (buyLevelChanged) {
         const message = buildChangeMessage(
           'BUY',
-          central.centralBuyPrice,
+          centralBuyPrice,
           centralBuyDepth,
           central.buyCurrentLevel,
           buyLevel,
@@ -183,7 +221,7 @@ export class StateUpdaterLogic {
       if (sellLevelChanged) {
         const message = buildChangeMessage(
           'SELL',
-          central.centralSellPrice,
+          centralSellPrice,
           centralSellDepth,
           central.sellCurrentLevel,
           sellLevel,
@@ -199,6 +237,129 @@ export class StateUpdaterLogic {
     if (levelsChanged) {
       this.centralState.updateCurrentLevels(symbol, buyLevel, sellLevel);
     }
+
+    if (centralUpdate) {
+      await this.handleAlertNotifications(
+        symbol,
+        { centralBuyPrice, centralSellPrice, centralBuyDepth, centralSellDepth },
+        centralUpdate,
+      );
+    }
+  }
+
+  private formatMagnitude(value: number | null): string {
+    if (value == null) return 'N/A';
+
+    if (Math.abs(value) >= 1000) {
+      const scaled = value / 1000;
+      const decimals = Math.abs(scaled) >= 100 ? 0 : 1;
+      return `${scaled.toFixed(decimals)}k`;
+    }
+
+    return value.toFixed(0);
+  }
+
+  private getQueueExtremes(
+    symbol: string,
+    side: 'BUY' | 'SELL',
+    price: number | null,
+  ): { nearest: number | null; furthest: number | null } {
+    if (price == null) return { nearest: null, furthest: null };
+
+    const orders = this.activeOrders.getOrder(symbol, side, price.toString());
+    if (!orders || orders.length === 0) return { nearest: null, furthest: null };
+
+    const positions = orders.map((o) => o.queue_position);
+    return { nearest: Math.min(...positions), furthest: Math.max(...positions) };
+  }
+
+  private buildAlertBody(
+    symbol: string,
+    centralBuyPrice: number | null,
+    centralSellPrice: number | null,
+    centralBuyDepth: number | null,
+    centralSellDepth: number | null,
+  ): string {
+    const buyQueue = this.getQueueExtremes(symbol, 'BUY', centralBuyPrice);
+    const sellQueue = this.getQueueExtremes(symbol, 'SELL', centralSellPrice);
+
+    const formatPrice = (price: number | null) => (price != null ? price.toString() : 'N/A');
+    const buyDepthText = this.formatMagnitude(centralBuyDepth);
+    const sellDepthText = this.formatMagnitude(centralSellDepth);
+
+    const buyNearest = this.formatMagnitude(buyQueue.nearest);
+    const buyFurthest = this.formatMagnitude(buyQueue.furthest);
+    const sellNearest = this.formatMagnitude(sellQueue.nearest);
+    const sellFurthest = this.formatMagnitude(sellQueue.furthest);
+
+    const line1 = `Buy: ${formatPrice(centralBuyPrice)}|${buyDepthText}     Sell: ${formatPrice(centralSellPrice)}|${sellDepthText}`;
+    const line2 = `Nearest: ${buyNearest}           Nearest: ${sellNearest}`;
+    const line3 = `Furthest: ${buyFurthest}         Furthest: ${sellFurthest}`;
+
+    return [line1, line2, line3].join('\n');
+  }
+
+  private async maybeNotifyBuyDepthDrop(
+    symbol: string,
+    centralBuyPrice: number | null,
+    centralBuyDepth: number | null,
+    previousCentralBuyDepth: number | null,
+    alertBody: string,
+    priceChanged: boolean,
+    previousCentralBuyPrice: number | null,
+  ): Promise<void> {
+    if (
+      centralBuyPrice == null ||
+      centralBuyDepth == null ||
+      previousCentralBuyDepth == null ||
+      priceChanged ||
+      previousCentralBuyPrice !== centralBuyPrice
+    ) {
+      return;
+    }
+
+    const thresholds = [400000, 300000, 200000, 100000];
+
+    for (const threshold of thresholds) {
+      if (previousCentralBuyDepth > threshold && centralBuyDepth <= threshold) {
+        const title = `Fila de compra cayo a ${this.formatMagnitude(threshold)}`;
+        await alertNotification(symbol, title, alertBody);
+      }
+    }
+  }
+
+  private async handleAlertNotifications(
+    symbol: string,
+    snapshot: {
+      centralBuyPrice: number | null;
+      centralSellPrice: number | null;
+      centralBuyDepth: number | null;
+      centralSellDepth: number | null;
+    },
+    centralUpdate: CentralUpdateSummary,
+  ): Promise<void> {
+    const { centralBuyPrice, centralSellPrice, centralBuyDepth, centralSellDepth } = snapshot;
+    const alertBody = this.buildAlertBody(
+      symbol,
+      centralBuyPrice,
+      centralSellPrice,
+      centralBuyDepth,
+      centralSellDepth,
+    );
+
+    if (centralUpdate.buyPriceChanged || centralUpdate.sellPriceChanged) {
+      await alertNotification(symbol, 'Cambio de precio', alertBody);
+    }
+
+    await this.maybeNotifyBuyDepthDrop(
+      symbol,
+      centralBuyPrice,
+      centralBuyDepth,
+      centralUpdate.previousCentralBuyDepth,
+      alertBody,
+      centralUpdate.buyPriceChanged,
+      centralUpdate.previousCentralBuyPrice,
+    );
   }
 
   createOrUpdateOrder(
