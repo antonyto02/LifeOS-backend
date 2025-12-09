@@ -36,7 +36,8 @@ export async function generalNotification({
     return;
   }
 
-  const collapseId = `${symbol}-${action}`;
+  const isMarketStatus = action === 'ALERT' || action === 'GENERAL';
+  const collapseId = isMarketStatus ? `${symbol}-MARKET_STATUS` : `${symbol}-${action}`;
 
   const message: CollapsiblePushMessage = {
     to: deviceToken,
