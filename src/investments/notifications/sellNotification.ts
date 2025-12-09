@@ -6,7 +6,8 @@ export async function sellNotification(symbol: string): Promise<void> {
   await generalNotification({
     symbol,
     action: 'SELL',
-    title: `Orden de venta para ${symbol} completada`,
+    title: `[${symbol}] Sell Order`,
+    body: 'Sell order filled',
     sound: 'default',
   });
 }

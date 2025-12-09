@@ -292,9 +292,14 @@ export class StateUpdaterLogic {
     const sellNearest = this.formatMagnitude(sellQueue.nearest);
     const sellFurthest = this.formatMagnitude(sellQueue.furthest);
 
-    const line1 = `Buy: ${formatPrice(centralBuyPrice)}|${buyDepthText}     Sell: ${formatPrice(centralSellPrice)}|${sellDepthText}`;
-    const line2 = `Nearest: ${buyNearest}           Nearest: ${sellNearest}`;
-    const line3 = `Furthest: ${buyFurthest}         Furthest: ${sellFurthest}`;
+    const labelWidth = 'Furthest:'.length + 1;
+    const padLabel = (label: string) => label.padEnd(labelWidth, ' ');
+    const symbolPrefix = `[${symbol}] `;
+    const emptyPrefix = ' '.repeat(symbolPrefix.length);
+
+    const line1 = `${symbolPrefix}${padLabel('Buy:')} ${formatPrice(centralBuyPrice)}|${buyDepthText} | ${padLabel('Sell:')} ${formatPrice(centralSellPrice)}|${sellDepthText}`;
+    const line2 = `${emptyPrefix}${padLabel('Nearest:')} ${buyNearest} | ${padLabel('Nearest:')} ${sellNearest}`;
+    const line3 = `${emptyPrefix}${padLabel('Furthest:')} ${buyFurthest} | ${padLabel('Furthest:')} ${sellFurthest}`;
 
     return [line1, line2, line3].join('\n');
   }
@@ -314,7 +319,7 @@ export class StateUpdaterLogic {
 
     for (const threshold of thresholds) {
       if (previousCentralBuyDepth > threshold && centralBuyDepth <= threshold) {
-        const title = `Fila de compra cayo a ${this.formatMagnitude(threshold)}`;
+        const title = `[${symbol}] Buy queue is below ${this.formatMagnitude(threshold)}.`;
         console.log(
           `[alerts] ${symbol}: profundidad BUY cayó de ${this.formatMagnitude(previousCentralBuyDepth)} a ${this.formatMagnitude(centralBuyDepth)} (umbral ${this.formatMagnitude(threshold)}) – enviando notificación`,
         );
@@ -346,7 +351,7 @@ export class StateUpdaterLogic {
       console.log(
         `[alerts] ${symbol}: cambio de precio detectado (BUY: ${centralUpdate.previousCentralBuyPrice} -> ${centralBuyPrice} | SELL: ${centralUpdate.previousCentralSellPrice} -> ${centralSellPrice}). Enviando notificación.`,
       );
-      await alertNotification(symbol, 'Cambio de precio', alertBody);
+      await alertNotification(symbol, `[${symbol}] Price changed.`, alertBody);
     }
 
     await this.maybeNotifyBuyDepthDrop(
