@@ -11,6 +11,7 @@ export class BinanceBtcPriceStreamService
   private referencePrice = 0;
   private lastNotifiedFloor = 0;
   private lowestPriceSinceReference = 0;
+  private maxPriceTimestamp = 0;
 
   onModuleInit() {
     this.connect();
@@ -72,6 +73,7 @@ export class BinanceBtcPriceStreamService
     if (this.referencePrice === 0) {
       this.referencePrice = currentPrice;
       this.lowestPriceSinceReference = currentPrice;
+      this.maxPriceTimestamp = Date.now();
       return;
     }
 
@@ -80,6 +82,7 @@ export class BinanceBtcPriceStreamService
       this.referencePrice = currentPrice;
       this.lastNotifiedFloor = 0;
       this.lowestPriceSinceReference = currentPrice;
+      this.maxPriceTimestamp = Date.now();
       return;
     }
 
@@ -95,8 +98,9 @@ export class BinanceBtcPriceStreamService
     // Condición de alerta
     if (currentFloor > this.lastNotifiedFloor) {
       this.lastNotifiedFloor = currentFloor;
+      const elapsed = this.formatElapsed(Date.now() - this.maxPriceTimestamp);
       console.log(
-        `🚨 [ALERTA] BTC bajó: ${delta.toFixed(2)} USD (Máx: ${this.referencePrice.toFixed(2)} | Actual: ${currentPrice.toFixed(2)})`,
+        `🚨 [ALERTA] BTC bajó: ${delta.toFixed(2)} USD en ${elapsed} (Máx: ${this.referencePrice.toFixed(2)} | Actual: ${currentPrice.toFixed(2)})`,
       );
     }
 
@@ -106,9 +110,22 @@ export class BinanceBtcPriceStreamService
       this.referencePrice = currentPrice;
       this.lastNotifiedFloor = 0;
       this.lowestPriceSinceReference = currentPrice;
+      this.maxPriceTimestamp = Date.now();
       console.log(
         `🔄 [RESET] BTC recuperó ${rebound.toFixed(2)} USD desde el mínimo. Nuevo referencia: ${this.referencePrice.toFixed(2)}`,
       );
     }
+  }
+
+  private formatElapsed(elapsedMs: number): string {
+    const totalSeconds = Math.floor(elapsedMs / 1000);
+
+    if (totalSeconds < 60) {
+      return `${totalSeconds}s`;
+    }
+
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}m ${seconds}s`;
   }
 }
