@@ -9,6 +9,9 @@ export interface CentralStateEntry {
 
   buyCurrentLevel: number | null;
   sellCurrentLevel: number | null;
+
+  centralBuyDepth: number | null;
+  centralSellDepth: number | null;
 }
 
 @Injectable()
@@ -26,6 +29,9 @@ export class CentralState {
 
         buyCurrentLevel: null,
         sellCurrentLevel: null,
+
+        centralBuyDepth: null,
+        centralSellDepth: null,
       };
     }
   }
@@ -81,6 +87,14 @@ export class CentralState {
 
     entry.buyCurrentLevel = buyLevel;
     entry.sellCurrentLevel = sellLevel;
+  }
+
+  updateCentralDepths(token: string, buyDepth: number | null, sellDepth: number | null): void {
+    this.ensureToken(token);
+    const entry = this.centralState[token];
+
+    entry.centralBuyDepth = buyDepth;
+    entry.centralSellDepth = sellDepth;
   }
 
   clearToken(token: string): void {

@@ -29,8 +29,8 @@ export class DepthEventsLogic {
     this.stateUpdater.applyDelta(symbol, bids, asks);
 
     // 👉 Recalcular central buy/sell
-    this.stateUpdater.updateCentralState(symbol);
-    this.stateUpdater.evaluateCentralLevels(symbol);
+    const centralUpdate = this.stateUpdater.updateCentralState(symbol);
+    await this.stateUpdater.evaluateCentralLevels(symbol, centralUpdate ?? undefined);
     await handleMarketEvent(symbol);
 
     // 👉 Avisar al frontend
