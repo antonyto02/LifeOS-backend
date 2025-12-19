@@ -104,9 +104,9 @@ export class BinanceBtcPriceStreamService
       );
     }
 
-    // Reset al recuperar 300 USD desde el mínimo de la caída
+    // Reset al recuperar 200 USD desde el mínimo de la caída
     const rebound = currentPrice - this.lowestPriceSinceReference;
-    if (rebound >= 300) {
+    if (rebound >= 200) {
       this.referencePrice = currentPrice;
       this.lastNotifiedFloor = 0;
       this.lowestPriceSinceReference = currentPrice;
