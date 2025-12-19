@@ -9,7 +9,7 @@ export async function alertNotification(symbol: string, title: string, body: str
       action: 'ALERT',
       title,
       body,
-      sound: 'default',
+      sound: 'alert.wav',
     });
   } catch (error) {
     console.error(
