@@ -1,5 +1,6 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import WebSocket, { RawData } from 'ws';
+import { alertNotification } from '../notifications/alertNotification';
 
 @Injectable()
 export class BinanceBtcPriceStreamService
@@ -43,7 +44,7 @@ export class BinanceBtcPriceStreamService
           const numericPrice = Number(price);
 
           if (Number.isFinite(numericPrice)) {
-            this.handlePrice(numericPrice);
+            void this.handlePrice(numericPrice);
           }
         }
       } catch (error) {
@@ -69,7 +70,7 @@ export class BinanceBtcPriceStreamService
     this.reconnectTimeout = setTimeout(() => this.connect(), 5000);
   }
 
-  private handlePrice(currentPrice: number) {
+  private async handlePrice(currentPrice: number) {
     if (this.referencePrice === 0) {
       this.referencePrice = currentPrice;
       this.lowestPriceSinceReference = currentPrice;
@@ -99,8 +100,20 @@ export class BinanceBtcPriceStreamService
     if (currentFloor > this.lastNotifiedFloor) {
       this.lastNotifiedFloor = currentFloor;
       const elapsed = this.formatElapsed(Date.now() - this.maxPriceTimestamp);
+      const formattedDelta = this.formatCurrency(delta);
+      const formattedReference = this.formatCurrency(this.referencePrice);
+      const formattedCurrent = this.formatCurrency(currentPrice);
+      const alertTitle = `🚨 BTC DOWN ${formattedDelta} IN ${elapsed}`;
+      const alertBody = `Max: ${formattedReference} | Current: ${formattedCurrent}`;
+
+      try {
+        await alertNotification('BTCUSDT', alertTitle, alertBody);
+      } catch (error) {
+        console.log('[BTC-PRICE] No se pudo enviar alerta de caída', error);
+      }
+
       console.log(
-        `🚨 [ALERTA] BTC bajó: ${delta.toFixed(2)} USD en ${elapsed} (Máx: ${this.referencePrice.toFixed(2)} | Actual: ${currentPrice.toFixed(2)})`,
+        `${alertTitle} (${alertBody})`,
       );
     }
 
@@ -111,8 +124,18 @@ export class BinanceBtcPriceStreamService
       this.lastNotifiedFloor = 0;
       this.lowestPriceSinceReference = currentPrice;
       this.maxPriceTimestamp = Date.now();
+      const formattedCurrent = this.formatCurrency(currentPrice);
+      const resetTitle = '✅ BTC RECOVERY: +$200';
+      const resetBody = `New reference point: ${formattedCurrent}`;
+
+      try {
+        await alertNotification('BTCUSDT', resetTitle, resetBody);
+      } catch (error) {
+        console.log('[BTC-PRICE] No se pudo enviar alerta de reset', error);
+      }
+
       console.log(
-        `🔄 [RESET] BTC recuperó ${rebound.toFixed(2)} USD desde el mínimo. Nuevo referencia: ${this.referencePrice.toFixed(2)}`,
+        `🔄 [RESET] BTC recuperó ${rebound.toFixed(2)} USD desde el mínimo. Nuevo referencia: ${formattedCurrent}`,
       );
     }
   }
@@ -127,5 +150,9 @@ export class BinanceBtcPriceStreamService
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}m ${seconds}s`;
+  }
+
+  private formatCurrency(amount: number): string {
+    return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2, style: 'currency', currency: 'USD' });
   }
 }
