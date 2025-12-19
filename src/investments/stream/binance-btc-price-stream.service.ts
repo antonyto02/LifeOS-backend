@@ -107,7 +107,8 @@ export class BinanceBtcPriceStreamService
       const alertBody = `Max: ${formattedReference} | Current: ${formattedCurrent}`;
 
       try {
-        await alertNotification('BTCUSDT', alertTitle, alertBody);
+        const alertSound = delta >= 200 ? 'alert.wav' : null;
+        await alertNotification('BTCUSDT', alertTitle, alertBody, alertSound);
       } catch (error) {
         console.log('[BTC-PRICE] No se pudo enviar alerta de caída', error);
       }
@@ -129,7 +130,7 @@ export class BinanceBtcPriceStreamService
       const resetBody = `New reference point: ${formattedCurrent}`;
 
       try {
-        await alertNotification('BTCUSDT', resetTitle, resetBody);
+        await alertNotification('BTCUSDT', resetTitle, resetBody, null);
       } catch (error) {
         console.log('[BTC-PRICE] No se pudo enviar alerta de reset', error);
       }

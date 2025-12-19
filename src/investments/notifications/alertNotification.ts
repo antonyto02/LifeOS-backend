@@ -1,6 +1,12 @@
 import { generalNotification } from './generalNotification';
+import { ExpoPushMessage } from 'expo-server-sdk';
 
-export async function alertNotification(symbol: string, title: string, body: string): Promise<void> {
+export async function alertNotification(
+  symbol: string,
+  title: string,
+  body: string,
+  sound: ExpoPushMessage['sound'] = 'alert.wav',
+): Promise<void> {
   console.log(`[notifications] Sending ALERT notification for ${symbol}`);
 
   try {
@@ -9,7 +15,7 @@ export async function alertNotification(symbol: string, title: string, body: str
       action: 'ALERT',
       title,
       body,
-      sound: 'alert.wav',
+      sound,
     });
   } catch (error) {
     console.error(
