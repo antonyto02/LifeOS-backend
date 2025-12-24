@@ -5,9 +5,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { createHash, createHmac, randomBytes } from 'node:crypto';
-import { PrismaService } from '../prisma/prisma.service';
 import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
 import { generateBcryptHash } from './utils/bcrypt-hasher';
@@ -39,9 +37,41 @@ type LoginResult = {
   refreshTokenExpiresInMs: number;
 };
 
+type UserRecord = {
+  id: string;
+  email: string;
+  passwordHash: string;
+  isActive: boolean;
+  lastLogin: Date | null;
+  deletedAt: Date | null;
+};
+
+type LoginAttemptRecord = {
+  id: string;
+  userId: string | null;
+  emailAttempted: string;
+  ipAddress?: string;
+  userAgent?: string | null;
+  success: boolean;
+  createdAt: Date;
+};
+
+type SessionRecord = {
+  id: string;
+  userId: string;
+  refreshTokenHash: string;
+  ipAddress?: string;
+  userAgent?: string | null;
+  expiresAt: Date;
+  revokedReasonId: string | null;
+  closedAt: Date | null;
+};
+
 @Injectable()
 export class AuthService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly usersByEmail = new Map<string, UserRecord>();
+  private readonly loginAttempts: LoginAttemptRecord[] = [];
+  private readonly sessions: SessionRecord[] = [];
 
   async login(
     payload: LoginDto,
@@ -67,32 +97,27 @@ export class AuthService {
     const ipAddress = normalizeIp(metadata?.ipAddress);
     const userAgent = normalizeUserAgent(metadata?.userAgent);
 
-    const loginAttempt = await this.prisma.loginAttempt.create({
-      data: {
-        userId: null,
-        emailAttempted: normalizedEmail,
-        ipAddress,
-        userAgent,
-        success: false,
-      },
-    });
+    const loginAttempt: LoginAttemptRecord = {
+      id: createId(),
+      userId: null,
+      emailAttempted: normalizedEmail,
+      ipAddress,
+      userAgent,
+      success: false,
+      createdAt: new Date(),
+    };
 
-    const user = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
+    this.loginAttempts.push(loginAttempt);
+
+    const user = this.usersByEmail.get(normalizedEmail) ?? null;
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     if (!user.isActive || user.deletedAt) {
-      await this.prisma.loginAttempt.update({
-        where: { id: loginAttempt.id },
-        data: {
-          userId: user.id,
-          success: false,
-        },
-      });
+      loginAttempt.userId = user.id;
+      loginAttempt.success = false;
 
       throw new ForbiddenException('Access denied');
     }
@@ -100,44 +125,30 @@ export class AuthService {
     const isPasswordValid = await verifyBcryptHash(password, user.passwordHash);
 
     if (!isPasswordValid) {
-      await this.prisma.loginAttempt.update({
-        where: { id: loginAttempt.id },
-        data: {
-          userId: user.id,
-          success: false,
-        },
-      });
+      loginAttempt.userId = user.id;
+      loginAttempt.success = false;
 
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    await this.prisma.loginAttempt.update({
-      where: { id: loginAttempt.id },
-      data: {
-        userId: user.id,
-        success: true,
-      },
-    });
+    loginAttempt.userId = user.id;
+    loginAttempt.success = true;
 
     const { refreshToken, refreshTokenExpiresInMs } =
       this.generateRefreshToken();
     const accessToken = this.generateAccessToken(user.id, normalizedEmail);
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { lastLogin: new Date() },
-    });
+    user.lastLogin = new Date();
 
-    await this.prisma.session.create({
-      data: {
-        userId: user.id,
-        refreshTokenHash: hashToken(refreshToken),
-        ipAddress,
-        userAgent,
-        expiresAt: new Date(Date.now() + refreshTokenExpiresInMs),
-        revokedReasonId: null,
-        closedAt: null,
-      },
+    this.sessions.push({
+      id: createId(),
+      userId: user.id,
+      refreshTokenHash: hashToken(refreshToken),
+      ipAddress,
+      userAgent,
+      expiresAt: new Date(Date.now() + refreshTokenExpiresInMs),
+      revokedReasonId: null,
+      closedAt: null,
     });
 
     return {
@@ -170,9 +181,7 @@ export class AuthService {
 
     const normalizedEmail = email.toLowerCase();
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: normalizedEmail },
-    });
+    const existingUser = this.usersByEmail.get(normalizedEmail) ?? null;
 
     if (existingUser && (existingUser.isActive || !existingUser.deletedAt)) {
       throw new ConflictException(
@@ -181,30 +190,16 @@ export class AuthService {
     }
 
     const passwordHash = await generateBcryptHash(password);
+    const newUser: UserRecord = {
+      id: createId(),
+      email: normalizedEmail,
+      passwordHash,
+      isActive: true,
+      lastLogin: null,
+      deletedAt: null,
+    };
 
-    try {
-      await this.prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          passwordHash,
-          isActive: true,
-          lastLogin: null,
-          deletedAt: null,
-        },
-      });
-    } catch (error) {
-      if (
-        error instanceof PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        throw new ConflictException(
-          'Unable to register user with provided credentials',
-        );
-      }
-
-      throw error;
-    }
-
+    this.usersByEmail.set(normalizedEmail, newUser);
     return { message: 'User created successfully' };
   }
 
@@ -345,4 +340,8 @@ function normalizeUserAgent(userAgent?: string | null) {
 
 function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
+}
+
+function createId() {
+  return randomBytes(16).toString('hex');
 }
