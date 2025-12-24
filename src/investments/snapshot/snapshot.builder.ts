@@ -164,14 +164,16 @@ export class SnapshotBuilder {
 
       const userOrders: SnapshotUserOrder[] = [];
       const sideOrders = tokenOrders?.BUY;
-      const order: ActiveOrder | undefined = sideOrders?.[priceKey];
+      const ordersAtPrice: ActiveOrder[] | undefined = sideOrders?.[priceKey];
 
-      if (order) {
-        userOrders.push({
-          id: order.id,
-          amount: order.pending_amount,
-          queue_postion: order.queue_position,
-        });
+      if (ordersAtPrice) {
+        for (const order of ordersAtPrice) {
+          userOrders.push({
+            id: order.id,
+            amount: order.pending_amount,
+            queue_postion: order.queue_position,
+          });
+        }
       }
 
       levels.push({
@@ -189,14 +191,16 @@ export class SnapshotBuilder {
 
       const userOrders: SnapshotUserOrder[] = [];
       const sideOrders = tokenOrders?.SELL;
-      const order: ActiveOrder | undefined = sideOrders?.[priceKey];
+      const ordersAtPrice: ActiveOrder[] | undefined = sideOrders?.[priceKey];
 
-      if (order) {
-        userOrders.push({
-          id: order.id,
-          amount: order.pending_amount,
-          queue_postion: order.queue_position,
-        });
+      if (ordersAtPrice) {
+        for (const order of ordersAtPrice) {
+          userOrders.push({
+            id: order.id,
+            amount: order.pending_amount,
+            queue_postion: order.queue_position,
+          });
+        }
       }
 
       levels.push({

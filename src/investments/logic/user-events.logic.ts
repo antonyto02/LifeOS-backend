@@ -7,8 +7,8 @@ import { StateUpdaterLogic } from './state-updater.logic';
 import { SnapshotGateway } from '../snapshot/snapshot.gateway';
 import placeSellOrder from '../bot/actions/placeSellOrder';
 import placeBuyOrder from '../bot/actions/placeBuyOrder';
-
-
+import { buyNotification } from '../notifications/buyNotification';
+import { sellNotification } from '../notifications/sellNotification';
 
 @Injectable()
 export class UserEventsLogic {
@@ -18,11 +18,10 @@ export class UserEventsLogic {
     private readonly depthStream: BinanceDepthStreamService,
     private readonly aggTradeStream: BinanceAggTradeStreamService,
     private readonly stateUpdater: StateUpdaterLogic,
-    private readonly snapshotGateway: SnapshotGateway
-
+    private readonly snapshotGateway: SnapshotGateway,
   ) {}
 
-    async handleUserExecutionReport(msg: any) {
+  async handleUserExecutionReport(msg: any) {
     const symbol = msg.s;
     const orderType = msg.o;
     const execType = msg.x;
@@ -48,7 +47,7 @@ export class UserEventsLogic {
         price,
         qty,
         depth,
-        orderId
+        orderId,
       );
       this.snapshotGateway.broadcastSnapshot();
       return;
@@ -62,17 +61,23 @@ export class UserEventsLogic {
       return;
     }
 
-
-
     if (execType === 'TRADE' && orderStatus === 'PARTIALLY_FILLED') {
       const orderId = msg.i;
       const filledQty = parseFloat(msg.l);
+      const side = msg.S;
+
       this.stateUpdater.applyPartialFill(orderId, filledQty);
+
+      if (side === 'BUY') {
+        await placeSellOrder(symbol);
+      } else if (side === 'SELL') {
+        await placeBuyOrder(symbol);
+      }
+
       this.snapshotGateway.broadcastSnapshot();
 
       return;
     }
-
 
     if (execType === 'TRADE' && orderStatus === 'FILLED') {
       const orderId = msg.i;
@@ -80,10 +85,14 @@ export class UserEventsLogic {
       await this.stateUpdater.cancelOrder(orderId);
 
       if (side === 'BUY') {
+        console.log('[user-events] Orden BUY completada. Enviando notificación.');
+        await buyNotification(symbol);
         await placeSellOrder(symbol);
       } else if (side === 'SELL') {
         console.log('[user-events] Orden SELL completada.');
-        await placeBuyOrder();
+        console.log('[user-events] Enviando notificación de venta completada.');
+        await sellNotification(symbol);
+        await placeBuyOrder(symbol);
       }
 
       this.snapshotGateway.broadcastSnapshot();

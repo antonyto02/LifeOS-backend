@@ -2,21 +2,22 @@ import { Module, forwardRef } from '@nestjs/common';
 import { BinanceUserStreamService } from './binance-user-stream.service';
 import { BinanceDepthStreamService } from './binance-depth-stream.service';
 import { BinanceAggTradeStreamService } from './binance-aggtrade-stream.service';
+import { BinanceBtcPriceStreamService } from './binance-btc-price-stream.service';
 import { LogicModule } from '../logic/logic.module';
 
 @Module({
-  imports: [
-    forwardRef(() => LogicModule)
-  ],
+  imports: [forwardRef(() => LogicModule)],
   providers: [
     BinanceUserStreamService,
     BinanceDepthStreamService,
     BinanceAggTradeStreamService,
+    BinanceBtcPriceStreamService,
   ],
   exports: [
     BinanceUserStreamService,
     BinanceDepthStreamService,
     BinanceAggTradeStreamService,
+    BinanceBtcPriceStreamService,
   ],
 })
 export class StreamModule {}
