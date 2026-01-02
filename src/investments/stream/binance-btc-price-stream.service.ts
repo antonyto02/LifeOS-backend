@@ -107,7 +107,7 @@ export class BinanceBtcPriceStreamService
       const alertBody = `Max: ${formattedReference} | Current: ${formattedCurrent}`;
 
       try {
-        const alertSound = delta >= 200 ? 'alert.wav' : null;
+        const alertSound = delta >= 200 ? 'btc.wav' : null;
         await alertNotification('BTCUSDT', alertTitle, alertBody, alertSound);
       } catch (error) {
         console.log('[BTC-PRICE] No se pudo enviar alerta de caída', error);

@@ -66,7 +66,7 @@ export const placeSellOrder = async (symbol: string): Promise<void> => {
 
     const free = Number(tokenBalance.free ?? 0);
     const totalBalance = free;
-    truncatedBalance = Math.floor(totalBalance);
+    truncatedBalance = totalBalance;
 
     console.log(`Saldo disponible de ${asset}: ${truncatedBalance}`);
   } catch (error) {
