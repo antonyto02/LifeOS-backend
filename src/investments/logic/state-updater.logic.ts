@@ -311,13 +311,10 @@ export class StateUpdaterLogic {
     const sellNearest = this.formatMagnitude(sellQueue.nearest);
     const sellFurthest = this.formatMagnitude(sellQueue.furthest);
 
-    const colWidth = 22;
-    const line1 = `Buy: ${formatPrice(centralBuyPrice)}|${buyDepthText}`.padEnd(colWidth, ' ') +
-      `| Sell: ${formatPrice(centralSellPrice)}|${sellDepthText}`;
-    const line2 = `Nearest: ${buyNearest}`.padEnd(colWidth, ' ') + `| Nearest: ${sellNearest}`;
-    const line3 = `Furthest: ${buyFurthest}`.padEnd(colWidth, ' ') + `| Furthest: ${sellFurthest}`;
+    const line1 = `🟢 B: ${formatPrice(centralBuyPrice)} (${buyDepthText})    🔴 S: ${formatPrice(centralSellPrice)} (${sellDepthText})`;
+    const line2 = `🔷 N: ${buyNearest}  F: ${buyFurthest}    🔶 N: ${sellNearest}  F: ${sellFurthest}`;
 
-    return `${line1}\n${line2}\n${line3}`;
+    return `${line1}\n${line2}`;
   }
 
   private async maybeNotifyBuyDepthDrop(
@@ -335,7 +332,7 @@ export class StateUpdaterLogic {
 
     for (const threshold of thresholds) {
       if (previousCentralBuyDepth > threshold && centralBuyDepth <= threshold) {
-        const title = `[${symbol}] Buy queue is below ${this.formatMagnitude(threshold)}.`;
+        const title = `[${symbol}] Buy queue dropped to ${this.formatMagnitude(centralBuyDepth)} ↓`;
         console.log(
           `[alerts] ${symbol}: profundidad BUY cayó de ${this.formatMagnitude(previousCentralBuyDepth)} a ${this.formatMagnitude(centralBuyDepth)} (umbral ${this.formatMagnitude(threshold)}) – enviando notificación`,
         );
@@ -368,7 +365,7 @@ export class StateUpdaterLogic {
       await generalNotification({
         symbol,
         action: 'GENERAL',
-        title: `[${symbol}] Buy queue is above ${this.formatMagnitude(centralBuyDepth)}.`,
+        title: `[${symbol}] Buy queue reached ${this.formatMagnitude(centralBuyDepth)} ↑`,
         body,
         sound: null,
       });
@@ -383,7 +380,7 @@ export class StateUpdaterLogic {
     await generalNotification({
       symbol,
       action: 'GENERAL',
-      title: `[${symbol}] Buy queue is below ${this.formatMagnitude(centralBuyDepth)}.`,
+      title: `[${symbol}] Buy queue dropped to ${this.formatMagnitude(centralBuyDepth)} ↓`,
       body,
       sound: null,
     });
