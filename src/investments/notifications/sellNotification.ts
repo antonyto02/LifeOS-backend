@@ -9,7 +9,7 @@ export async function sellNotification(symbol: string): Promise<void> {
       action: 'SELL',
       title: `[${symbol}] Sell Order`,
       body: 'Sell order filled',
-      sound: 'default',
+      sound: 'sellNotification.wav',
     });
   } catch (error) {
     console.error(

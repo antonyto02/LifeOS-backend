@@ -336,7 +336,7 @@ export class StateUpdaterLogic {
         console.log(
           `[alerts] ${symbol}: profundidad BUY cayó de ${this.formatMagnitude(previousCentralBuyDepth)} a ${this.formatMagnitude(centralBuyDepth)} (umbral ${this.formatMagnitude(threshold)}) – enviando notificación`,
         );
-        await alertNotification(symbol, title, alertBody);
+        await alertNotification(symbol, title, alertBody, 'orderbook.wav');
       }
     }
   }
@@ -409,7 +409,7 @@ export class StateUpdaterLogic {
       console.log(
         `[alerts] ${symbol}: cambio de precio detectado (BUY: ${centralUpdate.previousCentralBuyPrice} -> ${centralBuyPrice} | SELL: ${centralUpdate.previousCentralSellPrice} -> ${centralSellPrice}). Enviando notificación.`,
       );
-      await alertNotification(symbol, `[${symbol}] Price changed.`, alertBody);
+      await alertNotification(symbol, `[${symbol}] Price changed.`, alertBody, 'priceChange.wav');
     }
 
     await this.maybeNotifyBuyDepthDrop(
