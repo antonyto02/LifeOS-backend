@@ -11,8 +11,8 @@ export class AllowedTokensState implements OnModuleInit {
 
   onModuleInit() {
     this.allowed.add("ACAUSDT");
-    this.allowed.add("NKNUSDT");
-    this.allowed.add("VANRYUSDT");
+    this.allowed.add("FLOWUSDT");
+
   }
 
   static getInstance(): AllowedTokensState | null {
