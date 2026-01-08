@@ -1,4 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import axios from 'axios';
 import WebSocket, { RawData } from 'ws';
 import { alertNotification } from '../notifications/alertNotification';
 
@@ -13,6 +14,9 @@ export class BinanceBtcPriceStreamService
   private lastNotifiedFloor = 0;
   private lowestPriceSinceReference = 0;
   private maxPriceTimestamp = 0;
+  private readonly klineIntervalMs = 60 * 1000;
+  private readonly klineLimit = 361;
+  private readonly klineUrl = 'https://api.binance.com/api/v3/klines';
 
   onModuleInit() {
     this.connect();
@@ -101,10 +105,17 @@ export class BinanceBtcPriceStreamService
       this.lastNotifiedFloor = currentFloor;
       const elapsed = this.formatElapsed(Date.now() - this.maxPriceTimestamp);
       const formattedDelta = this.formatCurrency(delta);
-      const formattedReference = this.formatCurrency(this.referencePrice);
-      const formattedCurrent = this.formatCurrency(currentPrice);
       const alertTitle = `🚨 BTC DOWN ${formattedDelta} IN ${elapsed}`;
-      const alertBody = `Max: ${formattedReference} | Current: ${formattedCurrent}`;
+      let alertBody = '';
+
+      try {
+        alertBody = await this.buildTemporalAlertBody();
+      } catch (error) {
+        const formattedReference = this.formatCurrency(this.referencePrice);
+        const formattedCurrent = this.formatCurrency(currentPrice);
+        alertBody = `Max: ${formattedReference} | Current: ${formattedCurrent}`;
+        console.log('[BTC-PRICE] No se pudo calcular contexto temporal', error);
+      }
 
       try {
         const alertSound = delta >= 200 ? 'btc.wav' : null;
@@ -155,5 +166,76 @@ export class BinanceBtcPriceStreamService
 
   private formatCurrency(amount: number): string {
     return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2, style: 'currency', currency: 'USD' });
+  }
+
+  private formatSignedCurrency(amount: number): string {
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      style: 'currency',
+      currency: 'USD',
+      signDisplay: 'always',
+    });
+  }
+
+  private async buildTemporalAlertBody(): Promise<string> {
+    const klines = await this.fetchRecentKlines();
+    const lastClosedIndex = this.getLastClosedIndex(klines);
+    const currentClose = klines[lastClosedIndex].close;
+
+    const delta1 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 1));
+    const delta5 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 5));
+    const delta10 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 10));
+    const delta15 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 15));
+    const delta30 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 30));
+    const delta60 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 60));
+    const delta120 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 120));
+    const delta180 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 180));
+    const delta360 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 360));
+
+    const row1 = `1m: ${delta1} | 5m: ${delta5} | 10m: ${delta10}`;
+    const row2 = `15m: ${delta15} | 30m: ${delta30} | 1h: ${delta60}`;
+    const row3 = `2h: ${delta120} | 3h: ${delta180} | 6h: ${delta360}`;
+
+    return `${row1}\n${row2}\n${row3}`;
+  }
+
+  private async fetchRecentKlines(): Promise<Array<{ openTime: number; close: number }>> {
+    const response = await axios.get(this.klineUrl, {
+      params: {
+        symbol: 'BTCUSDT',
+        interval: '1m',
+        limit: this.klineLimit,
+      },
+    });
+
+    return (response.data as Array<[number, string, string, string, string]>).map((kline) => ({
+      openTime: kline[0],
+      close: Number(kline[4]),
+    }));
+  }
+
+  private getLastClosedIndex(klines: Array<{ openTime: number }>): number {
+    const lastIndex = klines.length - 1;
+    const lastOpenTime = klines[lastIndex].openTime;
+    const now = Date.now();
+
+    if (now < lastOpenTime + this.klineIntervalMs) {
+      return Math.max(0, lastIndex - 1);
+    }
+
+    return lastIndex;
+  }
+
+  private getCloseAtOffsetMinutes(
+    klines: Array<{ close: number }>,
+    lastClosedIndex: number,
+    offsetMinutes: number,
+  ): number {
+    const index = lastClosedIndex - offsetMinutes;
+    if (index < 0) {
+      return klines[0].close;
+    }
+    return klines[index].close;
   }
 }
