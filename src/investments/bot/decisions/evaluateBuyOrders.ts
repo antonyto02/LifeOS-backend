@@ -24,11 +24,11 @@ export async function evaluateBuyOrders(
     const { price, id, queue_position } = order;
 
     if (price === bidPrice) {
-      if (depthBid < 130_000) {
-        console.log('Cancelando porque el precio va a caer');
-        await cancelBuyOrder(id, symbol);
-        await placeBuyOrder(symbol);
-      }
+      // if (depthBid < 130_000) {
+      //   console.log('Cancelando porque el precio va a caer');
+      //   await cancelBuyOrder(id, symbol);
+      //   await placeBuyOrder(symbol);
+      // }
       continue;
     }
 

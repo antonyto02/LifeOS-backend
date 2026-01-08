@@ -1,31 +1,36 @@
 import axios from 'axios';
 import crypto from 'crypto';
 
-export const placeSellOrder = async (symbol: string): Promise<void> => {
-  let bestAskPrice: number | undefined;
+export const placeSellOrder = async (
+  symbol: string,
+  priceOverride?: number,
+): Promise<void> => {
+  let bestAskPrice: number | undefined = priceOverride;
 
-  try {
-    const depthResponse = await axios.get('https://api.binance.com/api/v3/depth', {
-      params: {
-        symbol,
-        limit: 5,
-      },
-    });
+  if (bestAskPrice === undefined) {
+    try {
+      const depthResponse = await axios.get('https://api.binance.com/api/v3/depth', {
+        params: {
+          symbol,
+          limit: 5,
+        },
+      });
 
-    const asks = depthResponse.data?.asks ?? [];
+      const asks = depthResponse.data?.asks ?? [];
 
-    if (!asks.length) {
+      if (!asks.length) {
+        console.log('Colocando orden de venta...');
+        console.log(`No hay niveles de venta para ${symbol}.`);
+        return;
+      }
+
+      bestAskPrice = Number(asks[0][0]);
+    } catch (error) {
       console.log('Colocando orden de venta...');
-      console.log(`No hay niveles de venta para ${symbol}.`);
+      console.log('[placeSellOrder] No se pudo obtener la profundidad de mercado.');
+      console.log((error as any).response?.data || (error as Error).message);
       return;
     }
-
-    bestAskPrice = Number(asks[0][0]);
-  } catch (error) {
-    console.log('Colocando orden de venta...');
-    console.log('[placeSellOrder] No se pudo obtener la profundidad de mercado.');
-    console.log((error as any).response?.data || (error as Error).message);
-    return;
   }
 
   console.log('Colocando orden de venta...');
@@ -66,7 +71,7 @@ export const placeSellOrder = async (symbol: string): Promise<void> => {
 
     const free = Number(tokenBalance.free ?? 0);
     const totalBalance = free;
-    truncatedBalance = totalBalance;
+    truncatedBalance = Math.floor(totalBalance * 100) / 100;
 
     console.log(`Saldo disponible de ${asset}: ${truncatedBalance}`);
   } catch (error) {
@@ -89,7 +94,7 @@ export const placeSellOrder = async (symbol: string): Promise<void> => {
       type: 'LIMIT',
       timeInForce: 'GTC',
       price: String(bestAskPrice),
-      quantity: String(truncatedBalance),
+      quantity: truncatedBalance.toFixed(2),
       timestamp: String(orderTimestamp),
     });
 

@@ -428,6 +428,7 @@ export class StateUpdaterLogic {
     qty: number,
     depth: DepthData,
     orderId: number,
+    entryPrice?: number,
   ): void {
     const priceKey = price.toString();
     let marketDepthAtPrice = 0;
@@ -441,7 +442,7 @@ export class StateUpdaterLogic {
     }
 
     const queuePos = Math.max(marketDepthAtPrice - qty, 0);
-    const order = {
+    const order: ActiveOrder = {
       id: orderId,
       pending_amount: qty,
       queue_position: queuePos,
@@ -451,7 +452,20 @@ export class StateUpdaterLogic {
       side,
       price,
     };
+
+    if (side === 'SELL') {
+      const resolvedEntryPrice =
+        entryPrice ?? this.activeOrders.consumePendingSellEntryPrice(symbol);
+
+      if (resolvedEntryPrice != null) {
+        order.entryPrice = resolvedEntryPrice;
+      }
+    }
     this.activeOrders.setOrder(symbol, side, priceKey, order);
+  }
+
+  setPendingSellEntryPrice(symbol: string, entryPrice: number): void {
+    this.activeOrders.setPendingSellEntryPrice(symbol, entryPrice);
   }
 
   findOrderById(orderId: number): {
