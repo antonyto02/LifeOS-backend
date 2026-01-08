@@ -165,13 +165,18 @@ export class BinanceBtcPriceStreamService
   }
 
   private formatCurrency(amount: number): string {
-    return amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2, style: 'currency', currency: 'USD' });
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      style: 'currency',
+      currency: 'USD',
+    });
   }
 
   private formatSignedCurrency(amount: number): string {
     return amount.toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
       style: 'currency',
       currency: 'USD',
       signDisplay: 'always',
