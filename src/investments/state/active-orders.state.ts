@@ -8,6 +8,7 @@ export interface ActiveOrder {
   token: string;
   side: 'BUY' | 'SELL';
   price: number;
+  entryPrice?: number;
 }
 
 @Injectable()
@@ -22,6 +23,7 @@ export class ActiveOrdersState {
       SELL: Record<string, ActiveOrder[]>;
     }
   > = {};
+  private pendingSellEntryPrice: Record<string, number> = {};
 
   constructor() {
     ActiveOrdersState.instance = this;
@@ -33,6 +35,21 @@ export class ActiveOrdersState {
 
   getAll() {
     return this.activeOrders;
+  }
+
+  setPendingSellEntryPrice(token: string, entryPrice: number): void {
+    this.pendingSellEntryPrice[token] = entryPrice;
+  }
+
+  consumePendingSellEntryPrice(token: string): number | undefined {
+    const entryPrice = this.pendingSellEntryPrice[token];
+
+    if (entryPrice === undefined) {
+      return;
+    }
+
+    delete this.pendingSellEntryPrice[token];
+    return entryPrice;
   }
 
   private ensureToken(token: string) {
