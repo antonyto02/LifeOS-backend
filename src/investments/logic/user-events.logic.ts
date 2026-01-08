@@ -65,10 +65,14 @@ export class UserEventsLogic {
       const orderId = msg.i;
       const filledQty = parseFloat(msg.l);
       const side = msg.S;
+      const entryPrice = parseFloat(msg.p);
 
       this.stateUpdater.applyPartialFill(orderId, filledQty);
 
       if (side === 'BUY') {
+        if (!Number.isNaN(entryPrice)) {
+          this.stateUpdater.setPendingSellEntryPrice(symbol, entryPrice);
+        }
         await placeSellOrder(symbol);
       } else if (side === 'SELL') {
         await placeBuyOrder(symbol);
@@ -82,11 +86,15 @@ export class UserEventsLogic {
     if (execType === 'TRADE' && orderStatus === 'FILLED') {
       const orderId = msg.i;
       const side = msg.S;
+      const entryPrice = parseFloat(msg.p);
       await this.stateUpdater.cancelOrder(orderId);
 
       if (side === 'BUY') {
         console.log('[user-events] Orden BUY completada. Enviando notificación.');
         await buyNotification(symbol);
+        if (!Number.isNaN(entryPrice)) {
+          this.stateUpdater.setPendingSellEntryPrice(symbol, entryPrice);
+        }
         await placeSellOrder(symbol);
       } else if (side === 'SELL') {
         console.log('[user-events] Orden SELL completada.');
