@@ -442,7 +442,7 @@ export class StateUpdaterLogic {
     }
 
     const queuePos = Math.max(marketDepthAtPrice - qty, 0);
-    const order = {
+    const order: ActiveOrder = {
       id: orderId,
       pending_amount: qty,
       queue_position: queuePos,

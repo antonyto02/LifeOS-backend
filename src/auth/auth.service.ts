@@ -14,18 +14,6 @@ import { verifyBcryptHash } from './utils/bcrypt-verifier';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
-const REQUIRED_ENV_VARS = [
-  'ACCESS_TOKEN_EXPIRES_IN',
-  'REFRESH_TOKEN_EXPIRES_IN',
-  'ACCESS_TOKEN_SECRET',
-] as const;
-
-for (const key of REQUIRED_ENV_VARS) {
-  if (!process.env[key]) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-}
-
 type LoginMetadata = {
   ipAddress?: string;
   userAgent?: string;
