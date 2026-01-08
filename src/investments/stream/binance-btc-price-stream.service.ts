@@ -178,20 +178,25 @@ export class BinanceBtcPriceStreamService
     });
   }
 
+  private formatDeltaWithEmoji(delta: number): string {
+    const emoji = delta < 0 ? '🔴' : '🟢';
+    return `${emoji} ${this.formatSignedCurrency(delta)}`;
+  }
+
   private async buildTemporalAlertBody(): Promise<string> {
     const klines = await this.fetchRecentKlines();
     const lastClosedIndex = this.getLastClosedIndex(klines);
     const currentClose = klines[lastClosedIndex].close;
 
-    const delta1 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 1));
-    const delta5 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 5));
-    const delta10 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 10));
-    const delta15 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 15));
-    const delta30 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 30));
-    const delta60 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 60));
-    const delta120 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 120));
-    const delta180 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 180));
-    const delta360 = this.formatSignedCurrency(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 360));
+    const delta1 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 1));
+    const delta5 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 5));
+    const delta10 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 10));
+    const delta15 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 15));
+    const delta30 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 30));
+    const delta60 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 60));
+    const delta120 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 120));
+    const delta180 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 180));
+    const delta360 = this.formatDeltaWithEmoji(currentClose - this.getCloseAtOffsetMinutes(klines, lastClosedIndex, 360));
 
     const row1 = `1m: ${delta1} | 5m: ${delta5} | 10m: ${delta10}`;
     const row2 = `15m: ${delta15} | 30m: ${delta30} | 1h: ${delta60}`;
