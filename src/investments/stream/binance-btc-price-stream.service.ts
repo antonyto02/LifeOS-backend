@@ -124,9 +124,6 @@ export class BinanceBtcPriceStreamService
         console.log('[BTC-PRICE] No se pudo enviar alerta de caída', error);
       }
 
-      console.log(
-        `${alertTitle} (${alertBody})`,
-      );
     }
 
     // Reset al recuperar 200 USD desde el mínimo de la caída
