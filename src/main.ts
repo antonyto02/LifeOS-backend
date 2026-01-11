@@ -7,8 +7,10 @@ import { AppModule } from './app.module';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { SnapshotGateway } from './investments/snapshot/snapshot.gateway';
 import placeBuyOrder from './investments/bot/actions/placeBuyOrder';
+import { registerBinanceRequestLogger } from './investments/utils/binance-request-logger';
 
 async function bootstrap() {
+  registerBinanceRequestLogger();
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
