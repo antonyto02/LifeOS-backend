@@ -90,15 +90,12 @@ export class UserEventsLogic {
       await this.stateUpdater.cancelOrder(orderId);
 
       if (side === 'BUY') {
-        console.log('[user-events] Orden BUY completada. Enviando notificación.');
         await buyNotification(symbol);
         if (!Number.isNaN(entryPrice)) {
           this.stateUpdater.setPendingSellEntryPrice(symbol, entryPrice);
         }
         await placeSellOrder(symbol);
       } else if (side === 'SELL') {
-        console.log('[user-events] Orden SELL completada.');
-        console.log('[user-events] Enviando notificación de venta completada.');
         await sellNotification(symbol);
         // await placeBuyOrder(symbol);
       }

@@ -1,8 +1,6 @@
 import { generalNotification } from './generalNotification';
 
 export async function sellNotification(symbol: string): Promise<void> {
-  console.log(`[notifications] Sending SELL notification for ${symbol}`);
-
   try {
     await generalNotification({
       symbol,
@@ -12,9 +10,6 @@ export async function sellNotification(symbol: string): Promise<void> {
       sound: 'sellNotification.wav',
     });
   } catch (error) {
-    console.error(
-      `[notifications] Error enviando Push, pero el bot sigue vivo. Action: SELL, Symbol: ${symbol}`,
-      error,
-    );
+    console.error(error);
   }
 }
