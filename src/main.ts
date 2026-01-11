@@ -20,7 +20,24 @@ const registerConsoleTimestamp = () => {
     debug: console.debug.bind(console),
   };
 
-  const getTimestamp = () => new Date().toISOString();
+  const dateFormatter = new Intl.DateTimeFormat('es-MX', {
+    timeZone: 'Etc/GMT+6',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  });
+
+  const getTimestamp = () => {
+    const parts = dateFormatter.formatToParts(new Date());
+    const lookup = Object.fromEntries(
+      parts.map((part) => [part.type, part.value]),
+    );
+    return `${lookup.day}/${lookup.month}/${lookup.year} - ${lookup.hour}:${lookup.minute}:${lookup.second} ${lookup.dayPeriod}`;
+  };
 
   consoleMethods.forEach((method) => {
     console[method] = (...args: unknown[]) => {
