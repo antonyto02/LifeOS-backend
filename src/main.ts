@@ -5,6 +5,7 @@ import {
 } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
 import { WsAdapter } from '@nestjs/platform-ws';
+import { ConsoleLogger } from '@nestjs/common';
 import { SnapshotGateway } from './investments/snapshot/snapshot.gateway';
 import placeBuyOrder from './investments/bot/actions/placeBuyOrder';
 import { registerBinanceRequestLogger } from './investments/utils/binance-request-logger';
@@ -52,6 +53,9 @@ async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
+    {
+      logger: new ConsoleLogger({ timestamp: false }),
+    },
   );
 
   app.useWebSocketAdapter(new WsAdapter(app));
