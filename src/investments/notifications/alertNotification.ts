@@ -7,8 +7,6 @@ export async function alertNotification(
   body: string,
   sound: ExpoPushMessage['sound'] = 'alert.wav',
 ): Promise<void> {
-  console.log(`[notifications] Sending ALERT notification for ${symbol}`);
-
   try {
     await generalNotification({
       symbol,
@@ -18,9 +16,6 @@ export async function alertNotification(
       sound,
     });
   } catch (error) {
-    console.error(
-      `[notifications] Error enviando Push, pero el bot sigue vivo. Action: ALERT, Symbol: ${symbol}`,
-      error,
-    );
+    console.error(error);
   }
 }

@@ -37,9 +37,8 @@ export const registerBinanceRequestLogger = (): void => {
     const requestUrl = buildRequestUrl(config);
 
     if (isBinanceRequest(requestUrl)) {
-      const timestamp = new Date().toISOString();
       const method = config.method?.toUpperCase() ?? 'GET';
-      console.log(`[binance][${timestamp}] ${method} ${requestUrl}`);
+      console.log(`[binance] ${method} ${requestUrl}`);
     }
 
     return config;
