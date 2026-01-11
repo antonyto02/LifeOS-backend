@@ -27,12 +27,10 @@ export async function generalNotification({
   const deviceToken = DeviceTokenState.getInstance().getDeviceToken();
 
   if (!deviceToken) {
-    console.log('[notifications] No device token available. Skipping push notification.');
     return;
   }
 
   if (!Expo.isExpoPushToken(deviceToken)) {
-    console.log(`[notifications] Invalid Expo push token: ${deviceToken}`);
     return;
   }
 
@@ -52,9 +50,6 @@ export async function generalNotification({
   try {
     await expo.sendPushNotificationsAsync([message]);
   } catch (error) {
-    console.error(
-      `[notifications] Error enviando Push, pero el bot sigue vivo. Action: ${action}, Symbol: ${symbol}`,
-      error,
-    );
+    console.error(error);
   }
 }
