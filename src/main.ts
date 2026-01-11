@@ -9,7 +9,28 @@ import { SnapshotGateway } from './investments/snapshot/snapshot.gateway';
 import placeBuyOrder from './investments/bot/actions/placeBuyOrder';
 import { registerBinanceRequestLogger } from './investments/utils/binance-request-logger';
 
+const consoleMethods = ['log', 'info', 'warn', 'error', 'debug'] as const;
+
+const registerConsoleTimestamp = () => {
+  const originalConsole = {
+    log: console.log.bind(console),
+    info: console.info.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+    debug: console.debug.bind(console),
+  };
+
+  const getTimestamp = () => new Date().toISOString();
+
+  consoleMethods.forEach((method) => {
+    console[method] = (...args: unknown[]) => {
+      originalConsole[method](`[${getTimestamp()}]`, ...args);
+    };
+  });
+};
+
 async function bootstrap() {
+  registerConsoleTimestamp();
   registerBinanceRequestLogger();
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
