@@ -641,9 +641,6 @@ export class StateUpdaterLogic {
           order.queue_position = newQueue;
           this.activeOrders.setOrder(symbol, 'BUY', key, order);
 
-          console.log(
-            `[Δ BUY] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`,
-          );
         }
       }
     }
@@ -662,9 +659,6 @@ export class StateUpdaterLogic {
           order.queue_position = newQueue;
           this.activeOrders.setOrder(symbol, 'SELL', key, order);
 
-          console.log(
-            `[Δ SELL] ${symbol} @ ${key} → newDepth=${newDepth}, combined=${combined}, newQueue=${newQueue}`,
-          );
         }
       }
     }
