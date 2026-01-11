@@ -10,9 +10,6 @@ import { calculateDepthLevel } from './depth-level.helper';
 import { alertNotification } from '../notifications/alertNotification';
 import { generalNotification } from '../notifications/generalNotification';
 
-const formatDepthAmount = (qty: number | null): string =>
-  qty != null ? qty.toLocaleString('en-US', { maximumFractionDigits: 2 }) : 'N/A';
-
 const resolveDirection = (
   previousLevel: number | null,
   nextLevel: number | null,
@@ -197,51 +194,7 @@ export class StateUpdaterLogic {
     const buyLevelChanged = buyLevel !== central.buyCurrentLevel;
     const sellLevelChanged = sellLevel !== central.sellCurrentLevel;
 
-    const buildChangeMessage = (
-      side: 'BUY' | 'SELL',
-      price: number | null,
-      depthQty: number | null,
-      previousLevel: number | null,
-      nextLevel: number | null,
-    ): string | null => {
-      if (price == null || nextLevel == null) return null;
-
-      const direction = resolveDirection(previousLevel, nextLevel);
-      const formattedDepth = formatDepthAmount(depthQty);
-      const sideLabel = side === 'BUY' ? 'comprar' : 'vender';
-
-      return `Orderbook de ${sideLabel} para ${symbol} en ${price} ${direction} a nivel ${nextLevel}[${formattedDepth}]`;
-    };
-
-    if (levelsChanged && levelsAreDifferent) {
-      const changes: string[] = [];
-
-      if (buyLevelChanged) {
-        const message = buildChangeMessage(
-          'BUY',
-          centralBuyPrice,
-          centralBuyDepth,
-          central.buyCurrentLevel,
-          buyLevel,
-        );
-        if (message) changes.push(message);
-      }
-
-      if (sellLevelChanged) {
-        const message = buildChangeMessage(
-          'SELL',
-          centralSellPrice,
-          centralSellDepth,
-          central.sellCurrentLevel,
-          sellLevel,
-        );
-        if (message) changes.push(message);
-      }
-
-      for (const change of changes) {
-        console.log(change);
-      }
-    }
+    void levelsAreDifferent;
 
     if (buyLevelChanged) {
       await this.maybeNotifyGeneralBuyLevelChange(
@@ -333,9 +286,6 @@ export class StateUpdaterLogic {
     for (const threshold of thresholds) {
       if (previousCentralBuyDepth > threshold && centralBuyDepth <= threshold) {
         const title = `[${symbol}] Buy queue dropped to ${this.formatMagnitude(centralBuyDepth)} ↓`;
-        console.log(
-          `[alerts] ${symbol}: profundidad BUY cayó de ${this.formatMagnitude(previousCentralBuyDepth)} a ${this.formatMagnitude(centralBuyDepth)} (umbral ${this.formatMagnitude(threshold)}) – enviando notificación`,
-        );
         await alertNotification(symbol, title, alertBody, 'orderbook.wav');
       }
     }
@@ -359,9 +309,6 @@ export class StateUpdaterLogic {
     const depthSummary = `${this.formatMagnitude(previousCentralBuyDepth)} -> ${this.formatMagnitude(centralBuyDepth)}`;
 
     if (direction === 'subió') {
-      console.log(
-        `[alerts] ${symbol}: buy level increased from ${previousBuyLevel} to ${nextBuyLevel} (depth ${depthSummary}). Enviando notificación GENERAL.`,
-      );
       await generalNotification({
         symbol,
         action: 'GENERAL',
@@ -374,9 +321,6 @@ export class StateUpdaterLogic {
 
     if (centralBuyDepth <= 400000) return;
 
-    console.log(
-      `[alerts] ${symbol}: buy level decreased from ${previousBuyLevel} to ${nextBuyLevel} (depth ${depthSummary}). Enviando notificación GENERAL.`,
-    );
     await generalNotification({
       symbol,
       action: 'GENERAL',
@@ -406,9 +350,6 @@ export class StateUpdaterLogic {
     );
 
     if (centralUpdate.buyPriceChanged || centralUpdate.sellPriceChanged) {
-      console.log(
-        `[alerts] ${symbol}: cambio de precio detectado (BUY: ${centralUpdate.previousCentralBuyPrice} -> ${centralBuyPrice} | SELL: ${centralUpdate.previousCentralSellPrice} -> ${centralSellPrice}). Enviando notificación.`,
-      );
       await alertNotification(symbol, `[${symbol}] Price changed.`, alertBody, 'priceChange.wav');
     }
 
