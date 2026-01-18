@@ -123,6 +123,14 @@ describe('evaluateSellOrder', () => {
       topAsk: 0.4,
     });
 
+    const ordersAfter = Object.values(
+      activeOrdersState.getAll()[symbol]?.SELL ?? {},
+    ).flat();
+    console.info(
+      '[test] Órdenes SELL después de caer a 98-99:',
+      JSON.stringify(ordersAfter, null, 2),
+    );
+
     expect(cancelSellOrder).toHaveBeenCalledTimes(4);
     expect(placeSellOrder).toHaveBeenCalledTimes(4);
     expect(placeSellOrder).toHaveBeenCalledWith(symbol, 99);
