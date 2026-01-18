@@ -63,13 +63,42 @@ describe('evaluateSellOrder', () => {
     expect(placeSellOrder).not.toHaveBeenCalled();
   });
 
-  it('repositions each sell order and keeps the last pending entryPrice when the book drops to 97-98', async () => {
+  it('repositions entryPrice 99 orders and triggers instant sell for entryPrice 100 when the book drops to 97-98', async () => {
     const symbol = 'BTCUSDT';
     const activeOrdersState = ActiveOrdersState.getInstance();
+    const nextId = { value: 1000 };
 
     if (!activeOrdersState) {
       throw new Error('ActiveOrdersState not initialized');
     }
+
+    (cancelSellOrder as jest.Mock).mockImplementation(async (orderId: number) => {
+      const allOrders = activeOrdersState.getAll()[symbol]?.SELL ?? {};
+
+      for (const [priceKey, orders] of Object.entries(allOrders)) {
+        if (orders.some((order) => order.id === orderId)) {
+          activeOrdersState.deleteOrder(symbol, 'SELL', priceKey, orderId);
+          break;
+        }
+      }
+    });
+
+    (placeSellOrder as jest.Mock).mockImplementation(async (token: string, price?: number) => {
+      const resolvedPrice = price ?? 0;
+      const entryPrice = activeOrdersState.consumePendingSellEntryPrice(token);
+      const orderId = nextId.value++;
+
+      activeOrdersState.setOrder(token, 'SELL', resolvedPrice.toString(), {
+        id: orderId,
+        pending_amount: 1,
+        queue_position: 0,
+        filled_amount: 0,
+        token,
+        side: 'SELL',
+        price: resolvedPrice,
+        entryPrice: entryPrice ?? undefined,
+      });
+    });
 
     activeOrdersState.setOrder(symbol, 'SELL', '100', {
       id: 201,
@@ -132,11 +161,8 @@ describe('evaluateSellOrder', () => {
     );
 
     expect(cancelSellOrder).toHaveBeenCalledTimes(4);
-    expect(placeSellOrder).toHaveBeenCalledTimes(4);
-    expect(placeSellOrder).toHaveBeenCalledWith(symbol, 99);
-    expect(executeInstantSell).not.toHaveBeenCalled();
-
-    const pendingEntry = activeOrdersState.consumePendingSellEntryPrice(symbol);
-    expect(pendingEntry).toBe(100);
+    expect(placeSellOrder).toHaveBeenCalledTimes(2);
+    expect(placeSellOrder).toHaveBeenCalledWith(symbol, 98);
+    expect(executeInstantSell).toHaveBeenCalledTimes(2);
   });
 });
