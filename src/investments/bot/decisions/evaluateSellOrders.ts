@@ -33,11 +33,11 @@ export async function evaluateSellOrder(
     }
 
     const maxPrice = entryPrice + 1;
-    const minPrice = entryPrice - 1;
+    const minPrice = entryPrice - 2;
 
-    if (askPrice < minPrice) {
+    if (askPrice <= minPrice) {
       console.log(
-        `[evaluateSellOrder] Precio ${askPrice} cayó más de 1 nivel bajo entry ${entryPrice}. Venta inmediata.`,
+        `[evaluateSellOrder] Precio ${askPrice} cayó más de 1 nivel bajo entry ${entryPrice} (>= 2 niveles). Venta inmediata.`,
       );
       await cancelSellOrder(id, symbol);
       await executeInstantSell(symbol);

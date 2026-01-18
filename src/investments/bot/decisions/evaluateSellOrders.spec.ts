@@ -31,7 +31,7 @@ describe('evaluateSellOrder', () => {
     (console.log as jest.Mock).mockRestore();
   });
 
-  it('cancels and executes instant sell when ask price drops more than one level below entry', async () => {
+  it('cancels and executes instant sell when ask price drops two or more levels below entry', async () => {
     const symbol = 'BTCUSDT';
     const activeOrdersState = ActiveOrdersState.getInstance();
 
