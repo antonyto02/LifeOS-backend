@@ -62,4 +62,73 @@ describe('evaluateSellOrder', () => {
     expect(executeInstantSell).toHaveBeenCalledWith(symbol);
     expect(placeSellOrder).not.toHaveBeenCalled();
   });
+
+  it('repositions each sell order and keeps the last pending entryPrice when the book drops to 98-99', async () => {
+    const symbol = 'BTCUSDT';
+    const activeOrdersState = ActiveOrdersState.getInstance();
+
+    if (!activeOrdersState) {
+      throw new Error('ActiveOrdersState not initialized');
+    }
+
+    activeOrdersState.setOrder(symbol, 'SELL', '100', {
+      id: 201,
+      pending_amount: 1,
+      queue_position: 0,
+      filled_amount: 0,
+      token: symbol,
+      side: 'SELL',
+      price: 100,
+      entryPrice: 99,
+    });
+
+    activeOrdersState.setOrder(symbol, 'SELL', '100', {
+      id: 202,
+      pending_amount: 1,
+      queue_position: 0,
+      filled_amount: 0,
+      token: symbol,
+      side: 'SELL',
+      price: 100,
+      entryPrice: 99,
+    });
+
+    activeOrdersState.setOrder(symbol, 'SELL', '100', {
+      id: 203,
+      pending_amount: 1,
+      queue_position: 0,
+      filled_amount: 0,
+      token: symbol,
+      side: 'SELL',
+      price: 100,
+      entryPrice: 100,
+    });
+
+    activeOrdersState.setOrder(symbol, 'SELL', '100', {
+      id: 204,
+      pending_amount: 1,
+      queue_position: 0,
+      filled_amount: 0,
+      token: symbol,
+      side: 'SELL',
+      price: 100,
+      entryPrice: 100,
+    });
+
+    await evaluateSellOrder(symbol, {
+      bidPrice: 98,
+      depthBid: 1,
+      askPrice: 99,
+      topBid: 0.6,
+      topAsk: 0.4,
+    });
+
+    expect(cancelSellOrder).toHaveBeenCalledTimes(4);
+    expect(placeSellOrder).toHaveBeenCalledTimes(4);
+    expect(placeSellOrder).toHaveBeenCalledWith(symbol, 99);
+    expect(executeInstantSell).not.toHaveBeenCalled();
+
+    const pendingEntry = activeOrdersState.consumePendingSellEntryPrice(symbol);
+    expect(pendingEntry).toBe(100);
+  });
 });
