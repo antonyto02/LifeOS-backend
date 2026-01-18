@@ -22,8 +22,13 @@ jest.mock('../actions/placeSellOrder', () => ({
 describe('evaluateSellOrder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, 'log').mockImplementation(() => undefined);
     const activeOrdersState = new ActiveOrdersState();
     activeOrdersState.clearAll();
+  });
+
+  afterEach(() => {
+    (console.log as jest.Mock).mockRestore();
   });
 
   it('cancels and executes instant sell when ask price drops more than one level below entry', async () => {
