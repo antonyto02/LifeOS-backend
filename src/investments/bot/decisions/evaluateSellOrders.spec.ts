@@ -51,9 +51,9 @@ describe('evaluateSellOrder', () => {
     });
 
     await evaluateSellOrder(symbol, {
-      bidPrice: 99,
+      bidPrice: 97,
       depthBid: 1,
-      askPrice: 98.5,
+      askPrice: 98,
       topBid: 0.6,
       topAsk: 0.4,
     });
