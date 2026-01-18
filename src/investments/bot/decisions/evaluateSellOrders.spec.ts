@@ -63,7 +63,7 @@ describe('evaluateSellOrder', () => {
     expect(placeSellOrder).not.toHaveBeenCalled();
   });
 
-  it('repositions each sell order and keeps the last pending entryPrice when the book drops to 98-99', async () => {
+  it('repositions each sell order and keeps the last pending entryPrice when the book drops to 97-98', async () => {
     const symbol = 'BTCUSDT';
     const activeOrdersState = ActiveOrdersState.getInstance();
 
@@ -116,9 +116,9 @@ describe('evaluateSellOrder', () => {
     });
 
     await evaluateSellOrder(symbol, {
-      bidPrice: 98,
+      bidPrice: 97,
       depthBid: 1,
-      askPrice: 99,
+      askPrice: 98,
       topBid: 0.6,
       topAsk: 0.4,
     });
@@ -127,7 +127,7 @@ describe('evaluateSellOrder', () => {
       activeOrdersState.getAll()[symbol]?.SELL ?? {},
     ).flat();
     console.info(
-      '[test] Órdenes SELL después de caer a 98-99:',
+      '[test] Órdenes SELL después de caer a 97-98:',
       JSON.stringify(ordersAfter, null, 2),
     );
 
