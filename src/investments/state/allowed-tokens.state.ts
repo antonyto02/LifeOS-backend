@@ -14,6 +14,7 @@ export class AllowedTokensState implements OnModuleInit {
     this.allowed.add("FLOWUSDT");
     this.allowed.add("VANRYUSDT");
     this.allowed.add("SCRUSDT");
+    this.allowed.add("TRUUSDT");
 
   }
 
